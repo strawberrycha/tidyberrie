@@ -48,3 +48,8 @@ Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast w
 ## Navigation and Home
 
 Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and clock on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.
+
+- AppBars use a 56dp base, 20/24 title type, 48dp controls, and a border on scroll. Tasks adds a single row of 40dp chips inside 48dp targets and a filter sheet with draft, Reset, and Show results.
+- Use Nunito outside the wordmark, 16/22 headings, 14–16 body, captions at 12 or above, 16dp card and screen padding, 12dp card gaps, and 16–24dp section gaps. Use the shared soft card surface, rounded corners, border, and shadow.
+- Use 24dp bar icons and 20dp inline icons with 1.75 stroke. Preserve the focus ring, pressed feedback with reduced-motion support, readable disabled controls, matching loading placeholders, and Undo feedback.
+- Scroll clearance includes the measured tab height, FAB, 16dp gap, and bottom inset. Move the FAB above the tab bar and hide it during keyboard resize.

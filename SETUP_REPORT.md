@@ -19,9 +19,9 @@ Use `npm run dev` for development. Install Playwright Chromium with `npx playwri
 
 ## Phone smoke test
 
-1. Open Home in airplane mode. Check the clock, greeting, week strip, and first task card.
-2. Tap +, then enter and save a task. Confirm the first tap opens its form directly. Select another weekday, change weeks, and press Today. Add four open tasks, complete one and use Undo, then check Show more.
-3. Set a Tasks chip and filter, scroll, switch tabs, and return. Check that the chip, filter, and scroll survive. Re-tap the active tab to go to its root and top.
-4. Open More → Appearance, set a name and 24-hour time, and check Home. Inspect Trash, Reminders and Alarms, Backup and Restore, Security, About, and disabled Meals.
-5. From a More detail screen, press hardware Back to More, then Back to Home. Verify a first Back shows the exit prompt and a second within two seconds exits.
-6. Open Calendar and Budget and verify their placeholders. Verify that Home has no Budget card and the phone has no Day Theme controls.
+1. Open Home and Tasks in airplane mode. Check for developer text. At 200% text, confirm the greeting and quote stay beside the avatar and weekday labels stay legible.
+2. Verify Home has one empty message and no progress bar at zero tasks. Tap + and check the task form opens directly. Add and complete tasks, use Undo, and check the pink progress track and fill.
+3. Scroll Home and Tasks until the last row clears the FAB and tabs. Focus a text field and confirm the keyboard hides the FAB and the input stays visible.
+4. Check the sticky chip row and each empty state. Open Search, type, clear, and use Android Back. Open Filter, apply and remove a chip, then Reset. Try the three-dot Sort menu.
+5. Edit a task and try to leave without saving. Check the confirmation and the sticky Save and Cancel controls. Check AppBars, Back arrows, Trash, Backups, and Reminders.
+6. Repeat in Sakura Night. Check Calendar and Budget placeholders and verify Day Theme stays hidden.
