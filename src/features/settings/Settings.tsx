@@ -34,7 +34,7 @@ export function Appearance() {
         <option value="sakura">Sakura Night</option>
       </select>
       <label htmlFor="week-start">Week starts on</label>
-      <select id="week-start" disabled={choosing || !preferences} value={preferences?.weekStart ?? 1}
+      <select id="week-start" disabled={choosing || !preferences} value={preferences?.weekStart ?? 0}
         onChange={event => {
           setChoosing(true)
           void chooseWeekStart(Number(event.target.value)).catch(() => show({ message: 'Could not save the week start.' }))

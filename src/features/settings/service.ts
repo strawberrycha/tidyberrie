@@ -6,7 +6,7 @@ import { changeSettings, deleteSettings, findOrCreateSettings, restoreSettings, 
 function defaults(key: 'preferences' | 'undo-demo', theme: Theme) {
   return {
     key, theme, storagePersistent: null, budgetView: 'monthly' as const,
-    avatar: '', currency: 'PHP' as const, weekStart: 1, dashboardCards: [], backupReminder: false,
+    avatar: '', currency: 'PHP' as const, weekStart: 0, dashboardCards: [], backupReminder: false,
   }
 }
 

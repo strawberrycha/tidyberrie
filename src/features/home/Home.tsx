@@ -64,7 +64,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
   const actions = useTaskActions()
   const [dialog, setDialog] = useState<'task' | 'quick' | TaskRow | { kind: 'expenses' | 'incomes'; id?: string }>()
   const [hiddenAmounts, setHiddenAmounts] = useState(() => localStorage.getItem('tidyberrie-home-hide-amounts') === 'true')
-  const week = visibleWindow('Week', selected, preferences?.weekStart ?? 1)
+  const week = visibleWindow('Week', selected, preferences?.weekStart ?? 0)
   const data = useCalendarData(week)
   const day = data.days.get(selected) ?? emptyDay
   const currentDay = data.days.get(today) ?? emptyDay
@@ -86,7 +86,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     <section className="home-card home-greeting">
       <Avatar mood={currentDay.rows.length > 0 && currentDay.done === currentDay.rows.length ? 'all' : overdue >= 3 ? 'overdue' : 'none'}
         evening={now.getHours() >= 21 || now.getHours() < 6} />
-      <div><h2>{greeting(now.getHours())}, {preferences?.yourName ?? 'Cha'}!</h2>
+      <div className="greeting-copy"><h2>{greeting(now.getHours())}, {preferences?.yourName ?? 'Cha'}!</h2>
         <p className="home-quote">{dailyQuote(today)}</p><time dateTime={today}>{dateLabel(today, { ...brief, weekday: 'long' })}</time>
       </div>
     </section>
@@ -124,8 +124,8 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
       </div>
       {data.loading ? <div className="home-skeleton" role="status" aria-label="Loading tasks" /> : data.error ?
         <div role="alert"><p>Could not load tasks.</p><button className="secondary" onClick={retry}>Retry</button></div> : <>
-          <label className="home-progress"><span>{day.done} of {day.rows.length} done</span>
-            <progress max={Math.max(1, day.rows.length)} value={day.done} /></label>
+          {day.rows.length > 0 && <div className="home-progress"><span>{day.done} of {day.rows.length} done</span>
+            <progress aria-label="Task completion" aria-valuemin={0} aria-valuemax={day.rows.length} aria-valuenow={day.done} max={day.rows.length} value={day.done} /></div>}
           {!day.rows.length && <div className="planner-empty">
             <EmptyIllustration icon={ListTodo} sticker="check" />
             <p>{isToday ? 'Nothing planned today' : 'Nothing planned for this day'}</p>
@@ -178,7 +178,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     {typeof dialog === 'object' && 'group' in dialog && <TaskForm
       initial={dialog.occurrence ? { ...dialog.value, repeat: defaultRepeat } : dialog.value}
       title="Task details" occurrence={!!dialog.occurrence} busy={actions.busy} close={close}
-      save={value => void actions.save(value, preferences?.weekStart ?? 1, dialog.group.task.id, dialog.occurrence, close)} />}
+      save={value => void actions.save(value, preferences?.weekStart ?? 0, dialog.group.task.id, dialog.occurrence, close)} />}
     {typeof dialog === 'object' && 'kind' in dialog && budget && <BudgetQuickEditor selection={dialog} data={budget.data} today={selected} close={close} />}
   </>
 }

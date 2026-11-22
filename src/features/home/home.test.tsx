@@ -77,6 +77,9 @@ it('renders the short plan, progress, reminder health, and the overdue and Show 
   renderHome(2)
   expect(screen.getByText('Next up · in 2h 10m')).toBeVisible()
   expect(screen.getByText('1 of 5 done')).toBeVisible()
+  const progress = screen.getByRole('progressbar', { name: 'Task completion' })
+  expect(progress).toHaveAttribute('aria-valuenow', '1')
+  expect(progress).toHaveAttribute('aria-valuemax', '5')
   expect(screen.getByRole('link', { name: '2 overdue' })).toHaveAttribute('href', '/tasks?list=Overdue')
   expect(screen.getByRole('link', { name: 'Show 1 more' })).toHaveAttribute('href', '/tasks?list=Today')
   expect(screen.getByRole('link', { name: /Reminders are off/ })).toHaveAttribute('href', '/more/reminders')
@@ -87,6 +90,8 @@ it('renders the short plan, progress, reminder health, and the overdue and Show 
 it('shows empty and completed states and uses one tap to open the task form', () => {
   const view = renderHome()
   expect(screen.getByText('Nothing planned today')).toBeVisible()
+  expect(screen.queryByRole('progressbar')).not.toBeInTheDocument()
+  expect(screen.queryByText('0 of 0 done')).not.toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Budget' })).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Add task' }))
   expect(screen.getByText('Task form for 2026-11-22')).toBeVisible()
