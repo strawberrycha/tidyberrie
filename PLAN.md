@@ -11,14 +11,22 @@ Tidyberrie is a pink, minimalist, cute, offline-first personal planner PWA for o
 - **Budget (PHP)** — Ask for a Daily, Monthly, or Yearly view on first use. Track cash on hand and online accounts with name, color, icon, and balance. Track expected income (sahod, allowance, sales, gifts) with an expected date. Expected → Received credits the chosen account. Track current and planned expenses with dates, category, account, and recurrence. Planned → Paid debits the chosen account. Include automatic totals, category budgets, savings goals, an utang tracker, bill reminders, charts, what-if mode, and CSV export.
 - **Settings** — Theme, avatar, currency (PHP), week start, dashboard card layout, backup reminder, backup/export/import, and optional App Lock.
 
+### Account balances and status changes
+
+- Derive each account balance as opening balance + received income − paid expenses + incoming transfers − outgoing transfers. Do not persist a mutable balance. Recalculate from current records so Undo, deletion, and restoration automatically correct balances. Exclude soft-deleted records.
+- Transfers between the user's own accounts change the two account balances by equal and opposite amounts. Exclude transfers from income, expenses, and monthly net totals.
+- Marking income Received or an expense Paid changes its status once and writes one `BudgetHistory` entry in the same transaction. Repeating an already applied action leaves the status and history unchanged.
+
 ### Budget quick cards
 
 Let the user choose which cards to display. Include total now, upcoming income, now + upcoming, expenses paid, expenses planned, and safe-to-spend per day.
 
-- **LEFT THIS MONTH** = (money now + upcoming income this month) − expenses this month.
-- **LEFT OVERALL** = (money now + all upcoming income) − all expenses, including future expenses.
+Money now is the sum of the derived account balances.
 
-Before Phase 5 implementation, define the expense inputs against current balances to prevent paid expenses from being counted twice. Define the safe-to-spend calculation and cover both decisions with unit tests.
+- **LEFT THIS MONTH** = money now + expected-but-not-yet-received income due this month − planned-but-not-yet-paid expenses due this month.
+- **LEFT OVERALL** = money now + all expected unreceived income − all planned unpaid expenses.
+- **NET THIS MONTH** (separate card) = all income (received + expected) this month − all expenses (paid + planned) this month.
+- **SAFE TO SPEND PER DAY** = LEFT THIS MONTH ÷ days remaining in the period, or ÷ days until the next expected sahod when using that horizon.
 
 ## Data model
 
@@ -28,9 +36,10 @@ All records have `id` (UUID), `createdAt`, `updatedAt`, and nullable `deletedAt`
 - **Subtask** — `taskId`, `title`, `done`, `order`, optional `dueAt`, optional `reminder`. Subtasks live inside their parent task. Reset subtask checks per occurrence of a repeating task.
 - **TaskException** — One record per affected occurrence of a repeating task. Fields are `taskId`, `date`, `action` (skipped/moved/completed), `movedTo`, and `subtaskStates`.
 - **DayTheme** — Weekday or specific date, `name`, `icon`, `color`.
-- **Account** — `name`, `type` (cash/online), `balance` in centavos, `color`, `icon`.
+- **Account** — `name`, `type` (cash/online), `openingBalance` in integer centavos, `color`, `icon`. The current balance is derived.
 - **Income** — `amount`, `source`, `expectedDate`, `status` (expected/received), `accountId`.
 - **Expense** — `amount`, `category`, `date`, `status` (planned/paid), `recurrenceRule`, `accountId`.
+- **Transfer** — `amount` in integer centavos, `date`, `fromAccountId`, `toAccountId`.
 - **BudgetHistory** — `entityType`, `entityId`, `field`, `oldValue`, `newValue`, `changedAt`.
 - **Goal**, **Debt** (utang), and **CategoryBudget** — Define their fields in Phase 5.
 - **Settings** — `budgetView` (daily/monthly/yearly), `theme`, `avatar`, `currency` (PHP), `weekStart`, `dashboardCards` layout, and backup reminder.
@@ -40,11 +49,11 @@ All records have `id` (UUID), `createdAt`, `updatedAt`, and nullable `deletedAt`
 A phase is complete only when its gate passes.
 
 0. **Design** — Approve tokens, themes, avatar poses, and wireframes on a phone-size mockup.
-1. **Foundation** — Install on Android and laptop and verify operation in airplane mode.
+1. **Foundation** — In the Phase 1 Dexie schema, store `Account.openingBalance` in integer centavos. Omit the mutable `balance` field and any balance index. Install on Android and laptop and verify operation in airplane mode.
 2. **Tasks** — Pass repeat-rule tests, verify that deleted tasks can be restored from Trash, and test subtask behavior.
 3. **Calendar and Home** — Verify month ends and leap years and smooth operation with 1,000+ tasks.
 4. **Reminders** — Implement web reminders first, then Capacitor Android alarms. Verify that alarms fire with the app closed and after phone reboot.
-5. **Budget** — Unit-test all formulas, verify integer centavos throughout, and trace every change in history.
+5. **Budget** — Unit-test every budget rule and formula. Verify that paid expenses and received income are each counted once, a transfer changes both account balances without changing aggregate cash or income and expense totals, repeated status changes produce one history entry, Undo of a paid expense and deletion correct balances, and recurring expenses count each occurrence once according to its date and status. Test all four cards, including both safe-to-spend horizons. Verify integer centavos throughout and trace every change in history.
 6. **Backup, polish, and accessibility** — Reject corrupt imports safely, reach the Lighthouse targets, and pass the accessibility review.
 7. **Optional Firebase sync** — Use Firestore, Google sign-in, and strict per-user security rules. Verify that offline edits merge correctly across both devices.
 
