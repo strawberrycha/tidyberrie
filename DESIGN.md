@@ -1,0 +1,46 @@
+# Tidyberrie design
+
+Keep the app clean, calm, and cute. Give data visual priority and use decoration for context, feedback, and personality.
+
+## Strawberry Milk
+
+Default theme proposals. Components use semantic tokens and themes swap token values.
+
+- `--bg` #FFF0F5, `--surface` #FFFFFF, `--soft` #FFE4E1
+- `--accent-1` #FFD1DC, `--accent-2` #FFCAD4, `--accent-3` #FFB7C5
+- `--primary` #C2456B, `--on-primary` #FFFFFF
+- `--text` #4A2F38, `--text-muted` #8A6572, `--border` #F3CBD6
+- `--success` #5E9C7A, `--warning` #D9952B, `--danger` #C0392B
+
+## Sakura Night
+
+Dark theme proposals. Set `--bg` to #2B1D25, `--surface` to #3A2832, `--primary` to #FF9DB5, and `--text` to #FDE9EF. Complete the remaining semantic tokens before implementation.
+
+## Optional themes
+
+Reserve these themes for later implementation as token sets only.
+
+- **Cozy Cat Cafe** — Background #FFF8F0, surface #FFFFFF, accent #D9708A, latte #E8C9A0, text #4B3A33.
+- **Matcha Berry** — Background #FFF5F7, surface #FFFFFF, accent #C2456B, sage #A8CDB4, text #3F2D34.
+- **Lavender Cloud** — Background #FAF3FF, surface #FFFFFF, accent #B3568F, lilac #D9C7F0, text #45304A.
+- **Mono Blush** — Background #FFFFFF, surface #FFF7F9, sole accent #C2456B, text #3A2A30.
+
+All hex values are proposals. Verify WCAG AA contrast for every text/background pairing before shipping. Adjust muted text and other tokens where needed.
+
+## Typography, layout, and motion
+
+- Self-host Caveat and Nunito via @fontsource. Use Caveat sparingly for headings and Nunito for body text. Use tabular numerals for money and a 12/14/16/20/24/32 type scale.
+- Use an 8-pt spacing grid and a soft shadow of `0 4px 16px rgba(194,69,107,0.10)`. Use radii of 16px for cards, 14px for buttons, and 999px for chips.
+- Limit laptop content width to about 1100px. Use two columns, list plus detail, on wide screens.
+- Give each screen one primary action, represented by a floating “+” when adding is the primary action. Set key information in large type and supporting information in smaller, muted type.
+- Use 150–250ms ease-out transitions and honor `prefers-reduced-motion`.
+
+## Illustration and icons
+
+- Use a cute girl avatar with separate transparent PNG or WebP poses for happy, cheering, sleepy, proud, and thinking moods.
+- Use individual illustrated sticker icons at 48–96px for day themes, the task icon picker, empty states, and achievements. Cut them individually from the user's planner icon sheet in `design-source/` or generate new ones. Keep illustration clear of data.
+- Use simple Lucide icons at 20–24px with a 1.75 stroke for navigation and buttons.
+
+## Components
+
+Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast with Undo, Empty state, mobile Tab bar, laptop Sidebar, Day Theme badge, and Avatar with moods.

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env*
+coverage/
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+playwright-report/
+playwright/.cache/
+test-results/
+blob-report/
