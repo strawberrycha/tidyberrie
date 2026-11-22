@@ -124,7 +124,7 @@ test('Axe and 200% text scaling across screens in both themes', async ({ page })
   for (const theme of ['strawberry', 'sakura']) {
     await page.getByLabel('Theme', { exact: true }).selectOption(theme)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
-    for (const route of ['/settings', '/', '/tasks', '/calendar', '/budget', '/budget/extras', '/budget/summary', '/settings/reminders']) {
+    for (const route of ['/settings', '/', '/tasks', '/calendar', '/budget', '/budget/extras', '/budget/summary', '/settings/reminders', '/settings/sync']) {
       await page.goto(route)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme)

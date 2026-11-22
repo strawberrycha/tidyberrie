@@ -201,3 +201,30 @@ Use a fresh browser profile with sample data. Run `npm run build` and `npm run p
 **Automated results.** Lint, typecheck, production build, 65 unit tests, and seven Playwright tests passed. Axe WCAG A/AA checks and 200% text reflow passed on Home, Calendar, Tasks, Budget, Budget extras, Monthly summary, Settings, and Reminders in both active themes. The browser suite checked manifest metadata and offline reload with a restored backup.
 
 Lighthouse 13.6.0 on the production Home route measured Performance/Accessibility/Best Practices of 100/100/100 on desktop and 95/100/100 on the standalone mobile rerun. The run immediately after the Playwright suite scored 61/100/100 on mobile. Lighthouse has no PWA category in this version. The manual script covers Android resume and the operating system install prompt.
+
+### Phase 7 sync
+
+With no Firebase environment variables, use `npm run dev` for local development or `npm run build` and `npm run preview` for the offline PWA. The Sync page will show that cloud sync is unavailable. No account is required.
+
+To test locally with Firebase emulators, use Java 21 or newer. Run the following from PowerShell. The demo project uses synthetic identities. Never enter a real Google login in the emulator.
+
+```powershell
+$env:FIREBASE_EMULATORS_PATH = Join-Path (Get-Location).Path '.firebase/emulators'
+npm run test:rules
+$env:VITE_SYNC_EMULATOR = 'true'
+npm run build
+npx playwright install chromium
+npm run test:sync
+```
+
+For a hands-on test, keep the emulator flag set in both shells. Run `npm run emulators` in one and `npm run preview` in the other. Use two separate browser profiles with the preview URL.
+
+1. In Settings → Sync, sign in with the same synthetic account in both profiles. Turn on sync and, for an encrypted run, choose encryption before enabling the first profile. Enter the same passphrase in the second.
+2. Create a shared task in profile A, use Sync now in A and B, and confirm the task appears in B. Take both profiles offline after the service worker is ready.
+3. Edit the shared task and add a new task in A. Delete the shared task in B after A's edit and add a different task. Reload A offline and check that its edits are still there.
+4. Reconnect B and sync first. Reconnect A, unlock the encrypted sync session if prompted, and sync. Confirm the deletion and conflict message in A. Sync B again and verify that both independent tasks appear in both profiles.
+5. Turn off sync in B and then sign out. Confirm both tasks remain available, even after reload. If testing reminders, verify that each device schedules reminders from the merged records once.
+
+For a real Firebase project, configure Google Authentication, authorize the hosting domain, and install the repository’s Firestore rules and indexes before enabling sync. Use `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_API_KEY`, and `VITE_FIREBASE_APP_ID` in an ignored local environment file or in the build environment. Tidyberrie uses the project's standard `<project>.firebaseapp.com` auth domain. Send the configured production CSP from the host, including the frame restriction. Leave the emulator flag unset. Service account files and administrative credentials are unnecessary for the app. Real Google authentication and Firebase deployment were outside local verification.
+
+**Verification.** Lint, typecheck, production build, 70 unit tests, and two Firestore emulator rules tests passed. The default build passed seven Playwright regressions including offline reload and Axe checks on Sync. A separate two-profile Playwright test passed against the Auth and Firestore emulators with encrypted payloads, concurrent offline edits, a tombstone, offline reload, and local retention after sign-out.

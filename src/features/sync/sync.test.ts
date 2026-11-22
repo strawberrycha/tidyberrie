@@ -126,3 +126,23 @@ it('encrypts record contents and authenticates the cloud record metadata', async
   expect(await decodeChange(uid, change.key, wire, key)).toEqual(change)
   await expect(decodeChange(uid, change.key, { ...wire, deviceId: b }, key)).rejects.toThrow()
 })
+
+it('converges on one edit when two devices save the same task at the same time', async () => {
+  const cloud = memoryCloud()
+  const record = task()
+  const key = 'tasks__' + record.id
+  await enableDevice(uid)
+  await db.table('syncDevice').update('device', { deviceId: a })
+  await tasks.add(record)
+  await synchronize(uid, cloud.remote)
+  await tasks.update(record.id, { title: 'Device A edit', updatedAt: time(1) })
+  cloud.save(key, await encodeChange(uid, {
+    key, collection: 'tasks', deviceId: b, updatedAt: time(1), deletedAt: null,
+    value: { ...record, title: 'Device B edit', updatedAt: time(1) },
+  }))
+  const result = await synchronize(uid, cloud.remote)
+  expect(result.conflicts).toBe(1)
+  expect((await tasks.get(record.id))?.title).toBe('Device B edit')
+  await synchronize(uid, cloud.remote)
+  expect(cloud.writes()).toBe(1)
+})
