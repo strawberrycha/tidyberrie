@@ -13,7 +13,6 @@ import { ThemeProvider, useTheme } from './shared/theme/ThemeProvider'
 import { ToastProvider, useToast } from './shared/ui/Toast'
 import { PwaStatus } from './shared/ui/PwaStatus'
 import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
-import { Budget } from './features/budget/Budget'
 import { saveDailySnapshot } from './shared/db/backupService'
 import { ReminderProvider } from './features/reminders/useReminders'
 
@@ -21,6 +20,7 @@ const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ defa
 const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ default: module.Home })))
 const Calendar = lazy(() => import('./features/calendar/Calendar').then(module => ({ default: module.Calendar })))
 const Settings = lazy(() => import('./features/settings/Settings').then(module => ({ default: module.Settings })))
+const Budget = lazy(() => import('./features/budget/Budget').then(module => ({ default: module.Budget })))
 const Reminders = lazy(() => import('./features/reminders/Reminders').then(module => ({ default: module.Reminders })))
 
 const screens = [

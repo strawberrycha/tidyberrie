@@ -17,8 +17,8 @@ export function QuickAdd({ draft, close }: { draft: QuickDraft; close: () => voi
     save={value => void actions.save(value, preferences?.weekStart ?? 1, undefined, undefined, close)} />
 }
 
-export function PlannerAddButton({ open }: { open: () => void }) {
-  return <button type="button" className="primary task-fab" aria-label="Add task" onClick={open}><Plus size={26} aria-hidden /></button>
+export function PlannerAddButton({ open, label = 'Add task' }: { open: () => void; label?: string }) {
+  return <button type="button" className="primary task-fab" aria-label={label} onClick={open}><Plus size={26} aria-hidden /></button>
 }
 
 export function PlannerTaskList({ rows, now }: { rows: TaskRow[]; now: Date }) {

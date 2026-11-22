@@ -154,3 +154,19 @@ Web verification passed lint, strict typecheck, the production build, and all 45
 7. **Edits and cancellation:** Schedule an alert, change its task time, and confirm the old time is quiet. Repeat after completing, skipping, or deleting an occurrence. Snooze a due alert and reload to check persistence.
 
 Android restores the existing queue after the first unlock following reboot. Reopen Tidyberrie periodically to extend the 14-day queue. OEM battery restrictions, Doze, force-stop, and exact-alarm settings can affect delivery. Web reminders require a running Tidyberrie page.
+
+## Phase 5A budget core
+
+From the project folder, run `npm run dev` and open **Budget**. Use `npm run build` followed by `npm run preview -- --port 4173 --strictPort` to test the offline production build.
+
+Lint, strict typecheck, all 53 tests, and the production build passed. Headless Chrome verified onboarding, inline validation, both settlement transitions, the unchanged projection during settlement, Undo, Trash restore, customizing cards, and a transfer saved offline and retained after reload. Home showed the saved custom card while offline. The development seed benchmark is recorded in DECISIONS.md.
+
+### Manual test
+
+1. Choose **Monthly**. Add a cash account with opening balance **100.00** and an online account with **0**. Add expected sahod of **40.25** and a planned expense of **15.50** dated this month. Money now is **₱100.00** and Left this month is **₱124.75**.
+2. Mark the expense paid and choose the cash account. Money now becomes **₱84.50**, while Left this month stays **₱124.75**. Select **Undo**, then receive the income. Money now becomes **₱140.25** and Upcoming income becomes **₱0.00**. Move **10.00** from cash to online and check that total cash stays the same.
+3. Add a recurring expense with a three-occurrence limit. Pay one occurrence from the period list. Inspect **History** for the new settlement. Delete a disposable expense, then open **Budget Trash** and restore it.
+4. Open **Customize cards**. Change a card label or order and choose which cards appear on Home. Test the date, account, status and category filters. Switch between Daily, Monthly, and Yearly in the header.
+5. In production preview, wait for the service worker to activate. Disable the network, add a transfer, and reload. Check that both balances and the Home card choices persisted.
+
+Amounts use period dates entered on records. Future recurring projections cover the next 90 days in the list. A series without an end displays open-ended lifetime projections, while month and year calculations remain finite.

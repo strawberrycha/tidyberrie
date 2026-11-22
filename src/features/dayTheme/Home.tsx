@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ListTodo, Wallet } from 'lucide-react'
+import { ListTodo } from 'lucide-react'
+import { HomeBudget } from '../budget/HomeBudget'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { dateLabel, localDate, weekdayOf } from '../calendar/dates'
 import { PlannerAddButton, PlannerTaskList, QuickAdd } from '../calendar/PlannerTasks'
@@ -60,10 +61,7 @@ export function Home() {
       {!total && !data.loading && <div className="planner-empty"><EmptyIllustration icon={ListTodo} sticker="check" /><p>Nothing planned today.</p></div>}
       <PlannerTaskList key={today} rows={day.rows} now={now} />
     </section>
-    <section className="planner-card">
-      <h2>Budget</h2>
-      <div className="planner-empty"><EmptyIllustration icon={Wallet} sticker="avatar-wallet" /><p>Set up your budget</p></div>
-    </section>
+    <HomeBudget today={today} />
     <PlannerAddButton open={() => setDraft(today)} />
     {draft && <QuickAdd draft={{ date: draft }} close={() => setDraft(undefined)} />}
   </div>
