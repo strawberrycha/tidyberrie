@@ -55,7 +55,12 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
     requestAnimationFrame(() => fields.current.get(next[to].id)?.focus())
   }
 
-  return <TaskDialog title={title} close={close}>
+  function cancel() {
+    if (busy) return
+    if (JSON.stringify(value) === JSON.stringify(initial) || window.confirm('Discard unsaved changes?')) close()
+  }
+
+  return <TaskDialog title={title} close={cancel}>
     <form className="task-form" noValidate onSubmit={event => {
       event.preventDefault()
       const result = taskInput.safeParse(value)
@@ -114,7 +119,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         </fieldset>}
         <fieldset>
           <legend>Reminders</legend>
-          <p>Tasks without a start time use 9:00 AM. Manage notification permissions in Settings.</p>
+          <p>Tasks without a start time use 9:00 AM. Manage notification permissions in More → Reminders and Alarms.</p>
           <div className="task-checks">{offsets.map((offset, index) => <label className="task-check" key={offset}>
             <input type="checkbox" checked={value.reminders.includes(offset)} onChange={event => set('reminders', event.target.checked ? [...value.reminders, offset] : value.reminders.filter(item => item !== offset))} /> {reminderLabels[index]}
           </label>)}</div>
@@ -148,7 +153,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         <label className="task-check"><input type="checkbox" checked={value.autoCompleteWhenSubtasksDone} onChange={event => set('autoCompleteWhenSubtasksDone', event.target.checked)} /> Complete automatically when all subtasks are checked</label>
       </fieldset>
       {!!Object.keys(errors).length && <p className="task-error" role="alert">Check the highlighted fields.</p>}
-      <footer className="task-actions"><button className="secondary" type="button" onClick={close}>Cancel</button><button className="primary" type="submit" disabled={busy}>Save task</button></footer>
+      <footer className="task-actions task-form-footer"><button className="secondary" type="button" disabled={busy} onClick={cancel}>Cancel</button><button className="primary" type="submit" disabled={busy}>Save task</button></footer>
     </form>
   </TaskDialog>
 }

@@ -29,6 +29,7 @@ afterAll(() => {
 it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Escape', async () => {
   const save = vi.fn()
   const close = vi.fn()
+  const confirmDiscard = vi.spyOn(window, 'confirm').mockReturnValue(true)
   render(<TaskForm initial={initial} title="Add task" busy={false} save={save} close={close} />)
   const title = screen.getByRole('textbox', { name: 'Title' })
   expect(title).toHaveFocus()
@@ -56,6 +57,8 @@ it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Es
   ] }))
   fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
   expect(close).toHaveBeenCalled()
+  expect(confirmDiscard).toHaveBeenCalledWith('Discard unsaved changes?')
+  confirmDiscard.mockRestore()
 })
 
 it('shows textual progress and a priority icon, and checks an expanded subtask', () => {
