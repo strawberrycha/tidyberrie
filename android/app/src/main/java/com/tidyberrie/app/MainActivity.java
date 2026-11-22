@@ -6,7 +6,7 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        registerPlugin(ReminderSettingsPlugin.class);
+        registerPlugin(DeviceSettingsPlugin.class);
         super.onCreate(savedInstanceState);
     }
 

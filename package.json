@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "android:prepare": "npm run build && cap sync android",
     "assets": "node scripts/assets.mjs",
     "test": "vitest run",
     "dev": "vite",
