@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tidyberrie</string>
+    <string name="title_activity_main">Tidyberrie</string>
+    <string name="package_name">com.tidyberrie.app</string>
+    <string name="custom_url_scheme">com.tidyberrie.app</string>
+</resources>

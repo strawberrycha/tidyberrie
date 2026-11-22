@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 import hooks from 'eslint-plugin-react-hooks'
 
 export default [
-  { ignores: ['dist/**', 'coverage/**', 'design-source/**'] },
+  { ignores: ['dist/**', 'coverage/**', 'design-source/**', 'android/app/src/main/assets/public/**', 'android/**/build/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
