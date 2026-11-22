@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { centavos } from '../utils/money'
 import { themes } from '../theme/tokens'
+import { taskInput } from '../../features/tasks/input'
 
 const id = z.uuid()
 const timestamp = z.iso.datetime({ offset: true })
@@ -23,6 +24,7 @@ export const recordSchemas = {
   taskExceptions: base.extend({
     taskId: id, date, action: z.enum(['skipped', 'moved', 'completed']),
     movedTo: dateOrTime.nullable(), subtaskStates: z.record(id, z.boolean()),
+    override: taskInput.optional(),
   }),
   dayThemes: base.extend({ weekday: z.int().min(0).max(6).optional(), date: date.optional(), name: text, icon: text, color: text })
     .refine(record => (record.weekday === undefined) !== (record.date === undefined)),

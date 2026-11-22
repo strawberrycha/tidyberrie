@@ -13,4 +13,7 @@ export function registerMigrations(db: Dexie) {
     settings: 'id,&key,deletedAt',
     snapshots: 'id,&day,deletedAt',
   })
+  db.version(2).stores({
+    taskExceptions: 'id,taskId,date,[taskId+date],movedTo,deletedAt',
+  })
 }

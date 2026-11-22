@@ -1,4 +1,4 @@
-import { StrictMode, useEffect } from 'react'
+import { lazy, StrictMode, Suspense, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
 import { CalendarDays, House, ListTodo, Settings2, Wallet } from 'lucide-react'
@@ -12,10 +12,12 @@ import { ToastProvider, useToast } from './shared/ui/Toast'
 import { PwaStatus } from './shared/ui/PwaStatus'
 import { Home } from './features/dayTheme/Home'
 import { Calendar } from './features/calendar/Calendar'
-import { Tasks } from './features/tasks/Tasks'
+import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { Budget } from './features/budget/Budget'
 import { Settings } from './features/settings/Settings'
 import { saveDailySnapshot } from './shared/db/backupService'
+
+const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
 
 const screens = [
   { path: '/', title: 'Home', icon: House, Page: Home },
@@ -26,6 +28,7 @@ const screens = [
 ]
 
 function DailySnapshots() {
+  useTaskMaintenance()
   const { preferences } = useTheme()
   const show = useToast()
 
@@ -60,7 +63,7 @@ function App() {
       <main id="main" tabIndex={-1}>
         <Routes>
           {screens.map(({ path, title, Page }) => <Route key={path} path={path} element={<>
-            <h1>{title}</h1><Page />
+            <h1>{title}</h1><Suspense fallback={<p role="status">Loading…</p>}><Page /></Suspense>
           </>} />)}
           <Route path="*" element={<><h1>Page unavailable</h1><NavLink to="/">Go to Home</NavLink></>} />
         </Routes>

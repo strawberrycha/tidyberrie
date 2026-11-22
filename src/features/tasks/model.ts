@@ -1,0 +1,80 @@
+import type { Records } from '../../shared/db/schemas'
+import { colors, emptyTask, icons } from './input'
+import type { SubtaskInput, TaskInput } from './input'
+import { decodeRepeat, encodeRepeat } from './recurrence'
+
+export type Task = Records['tasks']
+export type Subtask = Records['subtasks']
+export type TaskException = Records['taskExceptions']
+export type TaskGroup = { task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
+export type TaskRow = { group: TaskGroup; occurrence?: string; value: TaskInput }
+
+export function timeOf(value?: string | null) {
+  return value?.slice(11, 16) ?? ''
+}
+
+export function localTimestamp(date: string, time: string) {
+  if (!time) return date
+  const wallTime = new Date(date + 'T' + time + ':00')
+  const offset = -wallTime.getTimezoneOffset()
+  const sign = offset < 0 ? '-' : '+'
+  const hour = String(Math.floor(Math.abs(offset) / 60)).padStart(2, '0')
+  const minute = String(Math.abs(offset) % 60).padStart(2, '0')
+  return date + 'T' + time + ':00' + sign + hour + ':' + minute
+}
+
+export function storedTask(value: TaskInput, weekStart: number) {
+  return {
+    title: value.title, description: value.description,
+    startAt: localTimestamp(value.startDate, value.allDay ? '' : value.startTime),
+    endAt: value.endTime && !value.allDay ? localTimestamp(value.startDate, value.endTime) : null,
+    allDay: value.allDay, color: value.color, icon: value.icon, tag: value.tag,
+    priority: value.priority, status: value.status, pinned: value.pinned,
+    repeatRule: encodeRepeat(value.repeat, value.startDate, weekStart),
+    reminders: value.reminders, autoCompleteWhenSubtasksDone: value.autoCompleteWhenSubtasksDone,
+  }
+}
+
+export function completedStatus(value: TaskInput) {
+  if (!value.autoCompleteWhenSubtasksDone || !value.subtasks.length) return value.status
+  return value.subtasks.every(item => item.done) ? 'done' : value.status === 'done' ? 'todo' : value.status
+}
+
+export function progress(subtasks: SubtaskInput[]) {
+  return { total: subtasks.length, done: subtasks.filter(item => item.done).length }
+}
+
+export function taskValue(group: TaskGroup, fallback: string, occurrence?: string): TaskInput {
+  const { task } = group
+  const base = emptyTask(fallback)
+  const subtasks = group.subtasks.filter(item => !item.deletedAt).sort((a, b) => a.order - b.order)
+    .map(item => ({ id: item.id, title: item.title, done: item.done, dueTime: timeOf(item.dueAt) }))
+  const value: TaskInput = {
+    ...base, title: task.title, description: task.description, startDate: task.startAt?.slice(0, 10) ?? fallback,
+    startTime: timeOf(task.startAt), endTime: timeOf(task.endAt), allDay: task.allDay,
+    color: colors.find(color => color === task.color) ?? base.color,
+    icon: icons.find(icon => icon === task.icon) ?? base.icon,
+    tag: task.tag, priority: task.priority, status: task.status,
+    repeat: decodeRepeat(task.repeatRule), reminders: task.reminders, pinned: task.pinned,
+    autoCompleteWhenSubtasksDone: task.autoCompleteWhenSubtasksDone, subtasks,
+  }
+  return occurrence
+    ? occurrenceValue(value, occurrence, group.exceptions.find(item => !item.deletedAt && item.date === occurrence))
+    : value
+}
+
+export function occurrenceValue(base: TaskInput, occurrence: string, exception?: TaskException): TaskInput {
+  const draft: TaskInput = {
+    ...base,
+    startDate: exception?.movedTo?.slice(0, 10) ?? occurrence,
+    startTime: exception?.movedTo ? timeOf(exception.movedTo) : base.startTime,
+    status: base.status === 'done' ? 'todo' : base.status,
+    ...exception?.override,
+  }
+  return {
+    ...draft,
+    repeat: base.repeat,
+    status: exception?.action === 'completed' ? 'done' : draft.status,
+    subtasks: draft.subtasks.map(item => ({ ...item, done: exception?.subtaskStates[item.id] ?? false })),
+  }
+}

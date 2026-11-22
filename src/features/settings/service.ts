@@ -34,5 +34,9 @@ export function setTheme(id: string, theme: Theme) {
   return changeSettings(id, { theme })
 }
 
+export function setWeekStart(id: string, weekStart: number) {
+  return changeSettings(id, { weekStart })
+}
+
 export const deleteDemo = deleteSettings
 export const restoreDemo = restoreSettings

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { initializeSettings, setTheme } from '../../features/settings/service'
+import { initializeSettings, setTheme, setWeekStart } from '../../features/settings/service'
 import { applyTheme } from './tokens'
 import type { Theme } from './tokens'
 
@@ -10,6 +10,7 @@ type ThemeState = {
   error: boolean
   refresh: () => Promise<void>
   chooseTheme: (theme: Theme) => Promise<void>
+  chooseWeekStart: (weekStart: number) => Promise<void>
 }
 
 const ThemeContext = createContext<ThemeState | null>(null)
@@ -45,5 +46,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (preferences) setPreferences(await setTheme(preferences.id, theme))
   }
 
-  return <ThemeContext.Provider value={{ preferences, error, refresh, chooseTheme }}>{children}</ThemeContext.Provider>
+  async function chooseWeekStart(weekStart: number) {
+    if (preferences) setPreferences(await setWeekStart(preferences.id, weekStart))
+  }
+
+  return <ThemeContext.Provider value={{ preferences, error, refresh, chooseTheme, chooseWeekStart }}>{children}</ThemeContext.Provider>
 }
