@@ -88,3 +88,16 @@ Lint, strict typecheck, all 28 tests, and the production build passed. The 12 re
 3. Create a daily repeat. Complete today's occurrence and check that tomorrow's card in Upcoming has unchecked subtasks. Edit tomorrow with **This occurrence only** and move it forward a day. Use **All occurrences** to edit the series title in a separate repeat.
 4. Delete a task, choose Undo, and delete it again. In **Settings → Task Trash**, confirm that its subtasks are listed and restore it. To try permanent deletion, use a disposable sample task and confirm the prompt.
 5. For offline testing, run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open `http://localhost:4173/tasks`, wait for the service worker to activate, then disable the network in DevTools. Reload, create a task offline, and reload again to confirm it persists. Stop preview with Ctrl+C.
+
+## Phase 3 Calendar, Home, and Day Themes
+
+Calendar provides Month, Week, Day, and Agenda views. Home shows the resolved theme, progress, next task, today’s list, and overdue link. Settings manages custom Day Themes and weekday/date assignments. The existing Tasks form handles quick add and the Budget card is a Phase 5 placeholder.
+
+Lint, strict typecheck, the 35-test suite, and the production build passed. Headless Chrome checked all four views, keyboard date navigation, Day Theme precedence, prefilled quick add, completion and progress, phone and laptop panels, and offline persistence across reloads. The 1,000-task Month and Week timings are in DECISIONS.md.
+
+### Manual test
+
+1. Run `npm run dev` and open the URL printed by Vite. In **Settings → Day Themes**, set a weekday default and add a custom theme.
+2. Open **Calendar**, Tab into the Month grid, use the arrow keys to move, and press Enter to open a date. Override its Day Theme, add a task from the date panel, and confirm the count changes. Switch to Week and Agenda and check the same date.
+3. Select **Today → Day**, choose an empty hour, and confirm that the form prefills the date and time. Check the current-time line. On Home, complete a task and verify that progress updates. The overdue link should open the Overdue list directly.
+4. Run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open `http://localhost:4173` and wait for the service worker to activate. Set DevTools Network to Offline, reload, and create a task from Calendar. Reload again and confirm the task and Day Theme persist. Stop preview with Ctrl+C.
