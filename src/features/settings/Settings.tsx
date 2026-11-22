@@ -53,10 +53,6 @@ export function Settings() {
     </section>
     <BackupSettings />
     <LockSettings />
-    <section className="settings-card wide">
-      <h2>Cloud sync</h2>
-      <Link className="secondary settings-link" to="/settings/sync">Open sync settings</Link>
-    </section>
     <DayThemeSettings />
     <section className="settings-card wide">
       <h2>Reminders</h2>

@@ -109,7 +109,7 @@ export async function restoreSnapshot(id: string, day: string) {
 }
 
 export async function deleteAllData() {
-  const targets = [...tables, recovery, reminderState, db.table('lockDevice'), db.table('syncDevice'), db.table('syncRecords')]
+  const targets = db.tables
   await db.transaction('rw', targets, async () => {
     for (const target of targets) await target.clear()
   })

@@ -95,7 +95,7 @@ export function BackupSettings() {
     </dialog>
     <dialog ref={deleteDialog} className="settings-card" aria-labelledby="delete-data-title">
       <h3 id="delete-data-title">Delete all data?</h3>
-      <p>This permanently removes records, Trash, app settings, and snapshots from this device. Sync turns off here. Any cloud copies remain.</p>
+      <p>This permanently removes records, Trash, app settings, and snapshots from this device.</p>
       <button className="secondary" disabled={tools.busy} onClick={() => void tools.download('json', '')}>Export JSON first</button>
       <label>Type DELETE to confirm<input value={deletion} onChange={event => setDeletion(event.target.value)} /></label>
       <div className="actions">

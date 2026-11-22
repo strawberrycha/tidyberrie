@@ -35,14 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       value => { if (active) setPreferences(value) },
       () => { if (active) setError(true) },
     )
-    function syncUpdated() {
-      void initializeSettings().then(value => { if (active) setPreferences(value) }, () => {})
-    }
-    window.addEventListener('tidyberrie-sync-updated', syncUpdated)
-    return () => {
-      active = false
-      window.removeEventListener('tidyberrie-sync-updated', syncUpdated)
-    }
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
