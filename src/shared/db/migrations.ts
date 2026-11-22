@@ -22,4 +22,12 @@ export function registerMigrations(db: Dexie) {
     transfers: 'id,date,fromAccountId,toAccountId,deletedAt',
     expenses: 'id,date,status,accountId,deletedAt,seriesId,&[seriesId+date]',
   })
+  db.version(6).stores({
+    categoryBudgets: 'id,categoryKey,deletedAt',
+    goals: 'id,accountId,deletedAt',
+    debts: 'id,dueDate,deletedAt',
+    transfers: 'id,date,fromAccountId,toAccountId,deletedAt,debtId',
+    incomes: 'id,expectedDate,status,accountId,deletedAt,debtId',
+    expenses: 'id,date,status,accountId,deletedAt,seriesId,&[seriesId+date],debtId',
+  })
 }

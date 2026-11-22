@@ -38,11 +38,19 @@ export const recordSchemas = {
     ? record.weekday === undefined && record.date === undefined && record.themeKey === undefined
     : (record.weekday === undefined) !== (record.date === undefined)),
   accounts: base.extend({ name: text, type: z.enum(['cash', 'online']), openingBalance: centavos, color: text, icon: text }),
-  incomes: base.extend({ amount: centavos.nonnegative(), source: text, expectedDate: date, status: z.enum(['expected', 'received']), accountId: id }),
+  incomes: base.extend({ amount: centavos.nonnegative(), source: text, expectedDate: date, status: z.enum(['expected', 'received']), accountId: id, debtId: id.optional() }),
   expenses: base.extend({ amount: centavos.nonnegative(), category: text, date, status: z.enum(['planned', 'paid']),
-    recurrenceRule: text.nullable(), accountId: id, notes: text.max(2000).optional(), seriesId: id.optional() }),
-  transfers: base.extend({ amount: centavos.positive(), date, fromAccountId: id, toAccountId: id })
+    recurrenceRule: text.nullable(), accountId: id, notes: text.max(2000).optional(), seriesId: id.optional(),
+    debtId: id.optional(), billReminder: z.literal([0, 5, 15, 30, 60, 1440]).optional() }),
+  transfers: base.extend({ amount: centavos.positive(), date, fromAccountId: id, toAccountId: id, debtId: id.optional() })
     .refine(item => item.fromAccountId !== item.toAccountId),
+  categoryBudgets: base.extend({ category: text.trim().min(1).max(80), categoryKey: text.min(1).max(160), limit: centavos.positive() }),
+  goals: base.extend({ name: text.trim().min(1).max(80), target: centavos.positive(), targetDate: date.optional(), accountId: id }),
+  debts: base.extend({ person: text.trim().min(1).max(80), direction: z.enum(['owe','owed','internal']), amount: centavos.positive(),
+    dueDate: date, dueReminder: z.literal([0, 5, 15, 30, 60, 1440]).optional(), fromAccountId: id.optional(), toAccountId: id.optional() })
+    .refine(item => item.direction === 'internal'
+      ? !!item.fromAccountId && !!item.toAccountId && item.fromAccountId !== item.toAccountId
+      : !item.fromAccountId && !item.toAccountId),
   budgetHistory: base.extend({ entityType: text, entityId: id, field: text, oldValue: z.json(), newValue: z.json(), changedAt: timestamp }),
   settings: base.extend({
     key: z.enum(['preferences', 'undo-demo']), theme: z.enum(themes), storagePersistent: z.boolean().nullable(),
@@ -59,6 +67,9 @@ export const backupDataSchema = z.strictObject({
   accounts: z.array(recordSchemas.accounts), incomes: z.array(recordSchemas.incomes),
   expenses: z.array(recordSchemas.expenses), budgetHistory: z.array(recordSchemas.budgetHistory),
   transfers: z.array(recordSchemas.transfers).default([]),
+  categoryBudgets: z.array(recordSchemas.categoryBudgets).default([]),
+  goals: z.array(recordSchemas.goals).default([]),
+  debts: z.array(recordSchemas.debts).default([]),
   settings: z.array(recordSchemas.settings),
 })
 

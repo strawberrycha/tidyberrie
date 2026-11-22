@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { budgetCardsSchema } from '../../shared/db/schemas'
 import type { Records } from '../../shared/db/schemas'
-import { colors, icons } from '../tasks/input'
+import { colors, icons, reminderOffset } from '../tasks/input'
 import { repeatSchema } from '../tasks/repeatInput'
 import { defaultRepeat, encodeRepeat, expandDates, addDays } from '../tasks/recurrence'
 import { parseMoney } from './engine'
@@ -23,7 +23,8 @@ const positive = amount.refine(value => value > 0, 'Enter an amount greater than
 export const budgetSchemas = {
   accounts: z.strictObject({ name, type: z.enum(['cash', 'online']), color: z.enum(colors), icon: z.enum(icons), openingBalance: amount }),
   incomes: z.strictObject({ amount: positive, source: name, expectedDate: date, accountId: id }),
-  expenses: z.strictObject({ amount: positive, category: name, date, accountId: id, notes: z.string().max(2000), repeat: repeatSchema })
+  expenses: z.strictObject({ amount: positive, category: name, date, accountId: id, notes: z.string().max(2000), repeat: repeatSchema,
+    billReminder: reminderOffset.optional() })
     .superRefine(({ date, repeat }, ctx) => {
       if (repeat.until && (repeat.until < date || repeat.until > addDays(date, 366 * 50))) {
         ctx.addIssue({ code: 'custom', path: ['repeat'], message: 'Use an end date within 50 years of the first date.' })
@@ -51,7 +52,7 @@ export function saveBudget<K extends BudgetTable>(kind: K, raw: unknown, recordI
       if (current && 'seriesId' in current && current.seriesId && current.date !== fields.date) {
         throw new Error('A settled repeat keeps its occurrence date.')
       }
-      return { ...fields, recurrenceRule: paid ? null : encodeRepeat(repeat, fields.date, weekStart), status: paid ? 'paid' : 'planned' } as Records[K]
+      return { ...fields, billReminder: paid ? undefined : fields.billReminder, recurrenceRule: paid ? null : encodeRepeat(repeat, fields.date, weekStart), status: paid ? 'paid' : 'planned' } as Records[K]
     }
     return { ...next, ...(kind === 'incomes' && !current ? { status: 'expected' } : {}) } as Records[K]
   })

@@ -127,3 +127,78 @@ export function budgetEngine(input: BudgetData, today: string, period: Period, h
   }
   return { balances, cards, totals: period === 'monthly' ? totals : periodTotals(data, periodBounds(today, period)) }
 }
+
+export const categoryKey = (name: string) => name.trim().toLowerCase()
+
+export function spendingByCategory(data: BudgetData, month: string) {
+  const totals = new Map<string, { category: string; paid: bigint; planned: bigint }>()
+  for (const item of expensesWithin(data.expenses, periodBounds(month, 'monthly'))) {
+    const key = categoryKey(item.category)
+    const row = totals.get(key) ?? { category: item.category, paid: 0n, planned: 0n }
+    row[item.status] += BigInt(item.amount)
+    totals.set(key, row)
+  }
+  return totals
+}
+
+export function categoryProgress(limit: Records['categoryBudgets'], spending: ReturnType<typeof spendingByCategory>) {
+  const { paid, planned } = spending.get(limit.categoryKey) ?? { paid: 0n, planned: 0n }
+  const used = paid + planned
+  const cap = BigInt(limit.limit)
+  return { paid, planned, used, status: used > cap ? 'over' : used * 5n >= cap * 4n ? 'near' : 'within',
+    progress: Number(used > cap ? 100n : used * 100n / cap) } as const
+}
+
+export function debtProgress(debt: Records['debts'], data: Pick<BudgetData, 'incomes' | 'expenses' | 'transfers'>) {
+  const ledger = debt.direction === 'owed' ? data.incomes.filter(item => item.status === 'received')
+    : debt.direction === 'internal' ? data.transfers : data.expenses.filter(item => item.status === 'paid')
+  const payments = ledger.filter(item => !item.deletedAt && item.debtId === debt.id)
+  const paid = sum(payments, item => item.amount)
+  const remaining = BigInt(debt.amount) - paid
+  return { paid, remaining, status: remaining <= 0n ? 'settled' : paid > 0n ? 'partial' : 'open', payments } as const
+}
+
+export function goalProgress(goal: Records['goals'], transfers: BudgetData['transfers'], balance: bigint, today: string) {
+  const target = BigInt(goal.target)
+  const remaining = target - balance
+  const recent = transfers.filter(item => !item.deletedAt && item.date >= addDays(today, -29) && item.date <= today)
+  const rate = sum(recent.filter(item => item.toAccountId === goal.accountId), item => item.amount)
+    - sum(recent.filter(item => item.fromAccountId === goal.accountId), item => item.amount)
+  const estimatedDays = remaining > 0n && rate > 0n ? (remaining * 30n + rate - 1n) / rate : null
+  const projected = remaining <= 0n ? undefined : estimatedDays !== null && estimatedDays <= 36525n
+    ? addDays(today, Number(estimatedDays)) : undefined
+  const progress = balance <= 0n ? 0 : Number(balance >= target ? 100n : balance * 100n / target)
+  return { remaining, projected, progress }
+}
+
+export function previewPurchase(data: BudgetData, date: string, amount: number, today: string) {
+  const before = budgetEngine(data, today, 'monthly').cards
+  const after = budgetEngine({ ...data, expenses: [...data.expenses, {
+    id: 'preview', createdAt: '', updatedAt: '', deletedAt: null, date, amount,
+    status: 'planned', category: 'Preview', accountId: '', recurrenceRule: null,
+  }] }, today, 'monthly').cards
+  return { before: { month: before.leftMonth, overall: before.leftOverall },
+    after: { month: after.leftMonth, overall: after.leftOverall } }
+}
+
+export function monthlySummary(data: BudgetData, month: string, today: string) {
+  const bounds = periodBounds(month, 'monthly')
+  const through = bounds.through > today ? today : bounds.through
+  const settled = activeBudget(data)
+  const dated = {
+    ...settled,
+    incomes: settled.incomes.filter(item => item.status === 'received' && item.expectedDate <= through),
+    expenses: settled.expenses.filter(item => item.status === 'paid' && item.date <= through),
+    transfers: settled.transfers.filter(item => item.date <= through),
+  }
+  return { ...periodTotals(data, bounds), balance: budgetEngine(dated, through, 'monthly').cards.money ?? 0n }
+}
+
+export function chartData(data: BudgetData, month: string, today: string) {
+  const categories = [...spendingByCategory(data, month).values()].sort((a, b) => a.category.localeCompare(b.category))
+  const trend = Array.from({ length: 6 }, (_, index) => {
+    const date = shiftMonth(month, index - 5)
+    return { month: date.slice(0, 7), ...monthlySummary(data, date, today) }
+  })
+  return { categories, trend }
+}

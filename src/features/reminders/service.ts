@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { watchTasks } from '../tasks/service'
 import type { TaskGroup } from '../tasks/model'
+import { watchBudget } from '../budget/service'
+import { budgetDueWindow } from '../budget/due'
 import { localDate } from '../tasks/recurrence'
 import * as repository from './repository'
 import type { DeviceRecord } from './repository'
@@ -39,10 +41,13 @@ export function dismissReminder(input: Reminder) {
 
 export type ReminderState = { status?: ReminderStatus; due: Reminder[]; limit: number; testAt?: number; error?: boolean }
 
-function stateFor(groups: TaskGroup[], records: DeviceRecord[], now: number) {
+type BudgetSnapshot = Parameters<Parameters<typeof watchBudget>[0]>[0]
+
+function stateFor(groups: TaskGroup[], records: DeviceRecord[], budget: BudgetSnapshot, now: number) {
   const limit = limitSchema.safeParse(records.find(record => record.key === 'limit')?.value).data ?? defaultLimit
   const test = records.find(record => record.key === 'test')
   const reminders = reminderWindow(groups, now - retention - day, now + retention, Infinity)
+  reminders.push(...budgetDueWindow(budget, now - retention - day, now + retention))
   if (test && test.value >= now - retention) {
     reminders.push({ key: testKey, title: 'This is your Tidyberrie test reminder.', at: test.value, sourceAt: test.sourceAt })
   }
@@ -58,6 +63,7 @@ let scheduleWork = Promise.resolve()
 export function startReminders(publish: (state: ReminderState) => void) {
   let groups: TaskGroup[] | undefined
   let records: DeviceRecord[] | undefined
+  let budget: BudgetSnapshot | undefined
   let stopped = false
   let queued = false
   let lastPrune = ''
@@ -66,13 +72,13 @@ export function startReminders(publish: (state: ReminderState) => void) {
   }
 
   function refresh() {
-    if (!groups || !records || stopped || queued) return
+    if (!groups || !records || !budget || stopped || queued) return
     queued = true
     scheduleWork = scheduleWork.then(async () => {
       queued = false
-      if (stopped || !groups || !records) return
+      if (stopped || !groups || !records || !budget) return
       const now = Date.now()
-      const { due, upcoming, limit, testAt } = stateFor(groups, records, now)
+      const { due, upcoming, limit, testAt } = stateFor(groups, records, budget, now)
       const fallback = { due, limit, testAt }
       let status: ReminderStatus | undefined
       try {
@@ -94,6 +100,7 @@ export function startReminders(publish: (state: ReminderState) => void) {
 
   const stopTasks = watchTasks(false, values => { groups = values; refresh() }, reportError)
   const stopRecords = repository.observeRecords(values => { records = values; refresh() }, reportError)
+  const stopBudget = watchBudget(value => { budget = value; refresh() }, reportError)
   const interval = window.setInterval(refresh, 15_000)
   document.addEventListener('visibilitychange', refresh)
   window.addEventListener('focus', refresh)
@@ -102,6 +109,7 @@ export function startReminders(publish: (state: ReminderState) => void) {
     stopped = true
     stopTasks()
     stopRecords()
+    stopBudget()
     window.clearInterval(interval)
     document.removeEventListener('visibilitychange', refresh)
     window.removeEventListener('focus', refresh)
