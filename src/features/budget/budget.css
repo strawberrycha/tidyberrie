@@ -13,3 +13,11 @@
 .budget-view h3 svg { display: inline-block; vertical-align: middle; }
 .budget-history pre { white-space: pre-wrap; overflow-wrap: anywhere; }
 .budget-history summary, .budget-account-icon summary { min-height: 44px; cursor: pointer; padding-block: 8px; }
+.budget-link { min-height: 44px; }
+.budget-warning { display: flex; align-items: center; gap: 8px; color: var(--danger); font-weight: 800; }
+.budget-view progress { width: 100%; accent-color: var(--primary); }
+.budget-table { overflow-x: auto; }
+.budget-table table { width: 100%; border-collapse: collapse; text-align: start; }
+.budget-table th, .budget-table td { text-align: start; padding: 8px; border-bottom: 1px solid var(--border); }
+.budget-table td .budget-amount { font-size: 1rem; }
+.budget-view { --chart-primary: var(--primary); --chart-alternate: var(--control-border); }

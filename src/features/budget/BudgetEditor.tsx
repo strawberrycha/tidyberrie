@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Records } from '../../shared/db/schemas'
 import { TaskDialog } from '../tasks/TaskDialog'
 import { IconPicker } from '../tasks/IconPicker'
-import { colors, colorLabels, icons } from '../tasks/input'
+import { colors, colorLabels, icons, offsets } from '../tasks/input'
 import { decodeRepeat, defaultRepeat, repeatModes, weekdays } from '../tasks/recurrence'
 import type { Repeat } from '../tasks/recurrence'
 import type { IconKey } from '../../assets/stickers/keys'
@@ -82,7 +82,8 @@ export function BudgetEditor({ kind, row, today, accounts, actions, week, close 
     }
     if (kind === 'expenses') {
       const expense = row as Records['expenses'] | undefined
-      return { amount, accountId, date: expense?.date ?? today, category: expense?.category ?? categories[0], notes: expense?.notes ?? '' }
+      return { amount, accountId, date: expense?.date ?? today, category: expense?.category ?? categories[0], notes: expense?.notes ?? '',
+        billReminder: expense?.billReminder?.toString() ?? '' }
     }
     const transfer = row as Records['transfers'] | undefined
     return { amount, date: transfer?.date ?? today, fromAccountId: transfer?.fromAccountId ?? accounts[0]?.id ?? '',
@@ -101,7 +102,7 @@ export function BudgetEditor({ kind, row, today, accounts, actions, week, close 
   return <TaskDialog title={(row ? 'Edit ' : 'Add ') + kinds[kind].toLowerCase()} close={close}>
     <form className="task-form" noValidate onSubmit={event => {
       event.preventDefault()
-      const value = kind === 'expenses' ? { ...fields, repeat } : fields
+      const value = kind === 'expenses' ? { ...fields, repeat, billReminder: fields.billReminder === '' ? undefined : Number(fields.billReminder) } : fields
       const checked = actions.check(kind, value)
       if (!checked.success) {
         setErrors(Object.fromEntries(checked.error.issues.map(issue => [issue.path[0], issue.message])))
@@ -128,7 +129,12 @@ export function BudgetEditor({ kind, row, today, accounts, actions, week, close 
         <CategoryChoice label="Category" choices={categories} value={fields.category} change={value => set('category', value)} error={errors.category} />
         {input('date', 'Date', 'date')}{account('accountId', 'Account')}
         <label>Notes<textarea maxLength={2000} value={fields.notes} onChange={event => set('notes', event.target.value)} />{error('notes')}</label>
-        {(!row || !('status' in row) || row.status !== 'paid') && <Repeats value={repeat} change={setRepeat} />}{error('repeat')}
+        {(!row || !('status' in row) || row.status !== 'paid') && <>
+          <label>Bill reminder<select value={fields.billReminder} onChange={event => set('billReminder', event.target.value)}>
+            <option value="">No reminder</option>{offsets.map(offset => <option key={offset} value={offset}>{offset === 0 ? 'On the due date at 9:00 AM' : offset + ' minutes before 9:00 AM'}</option>)}
+          </select>{error('billReminder')}</label>
+          <Repeats value={repeat} change={setRepeat} />
+        </>}{error('repeat')}
       </>}
       {kind === 'transfers' && <>{input('date', 'Date', 'date')}{account('fromAccountId', 'From account')}{account('toAccountId', 'To account')}</>}
       <button type="submit" className="primary" disabled={actions.busy}>Save {kinds[kind].toLowerCase()}</button>

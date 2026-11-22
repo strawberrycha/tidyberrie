@@ -21,6 +21,8 @@ const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ def
 const Calendar = lazy(() => import('./features/calendar/Calendar').then(module => ({ default: module.Calendar })))
 const Settings = lazy(() => import('./features/settings/Settings').then(module => ({ default: module.Settings })))
 const Budget = lazy(() => import('./features/budget/Budget').then(module => ({ default: module.Budget })))
+const BudgetExtras = lazy(() => import('./features/budget/BudgetExtras').then(module => ({ default: module.BudgetExtras })))
+const MonthlySummary = lazy(() => import('./features/budget/MonthlySummary').then(module => ({ default: module.MonthlySummary })))
 const Reminders = lazy(() => import('./features/reminders/Reminders').then(module => ({ default: module.Reminders })))
 
 const screens = [
@@ -72,6 +74,8 @@ function App() {
           <Route path="/settings/reminders" element={<><h1>Reminders</h1>
             <Suspense fallback={<p role="status">Loading…</p>}><Reminders /></Suspense>
           </>} />
+          <Route path="/budget/extras" element={<><h1>Budget extras</h1><Suspense fallback={<p role="status">Loading…</p>}><BudgetExtras /></Suspense></>} />
+          <Route path="/budget/summary" element={<><h1>Monthly summary</h1><Suspense fallback={<p role="status">Loading…</p>}><MonthlySummary /></Suspense></>} />
           <Route path="*" element={<><h1>Page unavailable</h1><NavLink to="/">Go to Home</NavLink></>} />
         </Routes>
       </main>

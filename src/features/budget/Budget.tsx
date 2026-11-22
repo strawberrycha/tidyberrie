@@ -1,5 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { Archive, Wallet } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { useLocalClock } from '../calendar/useCalendarData'
@@ -17,6 +18,7 @@ import type { Filters, Listing } from './filters'
 import { defaultCards, kinds, periods } from './model'
 import type { BudgetTable } from './model'
 import { useBudget, useBudgetActions } from './useBudget'
+import { useTransactionExport } from './useExtras'
 import './budget.css'
 
 const BudgetHistory = lazy(() => import('./BudgetHistory').then(module => ({ default: module.BudgetHistory })))
@@ -28,6 +30,7 @@ type Dialog =
 export function Budget() {
   const { data, error } = useBudget()
   const actions = useBudgetActions()
+  const exportTransactions = useTransactionExport()
   const { preferences } = useTheme()
   const today = localDate(useLocalClock())
   const [dialog, setDialog] = useState<Dialog>()
@@ -58,6 +61,11 @@ export function Budget() {
     <div className="task-actions">
       <button className="secondary" type="button" onClick={flipTrash}><Archive size={18} aria-hidden />{trash ? 'Back to Budget' : 'Budget Trash'}</button>
       {!trash && <button className="secondary" type="button" onClick={() => setDialog({ kind: 'history' })}>History</button>}
+      {!trash && <>
+        <Link className="secondary budget-link" to="/budget/extras">Category limits, goals &amp; utang</Link>
+        <Link className="secondary budget-link" to="/budget/summary">Monthly summary</Link>
+        <button className="secondary" type="button" onClick={() => exportTransactions(data)}>Export transactions as CSV</button>
+      </>}
     </div>
     {!trash && <>
       <section className="planner-card">

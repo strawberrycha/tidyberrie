@@ -170,3 +170,18 @@ Lint, strict typecheck, all 53 tests, and the production build passed. Headless 
 5. In production preview, wait for the service worker to activate. Disable the network, add a transfer, and reload. Check that both balances and the Home card choices persisted.
 
 Amounts use period dates entered on records. Future recurring projections cover the next 90 days in the list. A series without an end displays open-ended lifetime projections, while month and year calculations remain finite.
+
+## Phase 5B budget extras
+
+Run `npm run dev`, then open **Budget → Category limits, goals & utang** or **Monthly summary**.
+
+Lint, strict typecheck, all 61 tests, and the production build passed. Headless Chrome verified the category warning, goal contribution and projection, a partial debt payment, a read-only what-if preview, CSV download content, bill and utang reminders, and offline reload persistence. It opened the monthly summary tables and all three lazy-loaded charts with the network disabled.
+
+### Manual test
+
+1. Set a Food monthly limit. Add a planned Food expense and pay an occurrence of a second Food expense. Check that both figures appear in the progress card and that the warning changes as you cross the limit.
+2. Create a savings goal and contribute from Cash. Check the linked savings balance, projected finish, and unchanged Money now. Try Undo.
+3. Create an **I owe them** debt, record a partial payment, and check that Budget shows a paid expense. Repeat for **They owe me** and confirm received income. For **Between my accounts**, verify the payment appears as a transfer. Check that overpayment is rejected and Undo corrects the remaining balance.
+4. Enable a reminder on a planned bill or open utang, with a due date falling in the Phase 4 reminder window. Check **Settings → Reminders**. Pay one recurring bill occurrence and check that the other occurrences still have reminders.
+5. Preview a purchase and close the dialog. The saved budget and history should retain their original values. Open **Monthly summary** and compare the chart with the tables. Export transactions and check the CSV’s amount column is in centavos.
+6. For offline verification, run `npm run build` and `npm run preview -- --port 4173 --strictPort`. After the service worker activates, disable the network, reload Budget extras and Monthly summary, and check your saved records and charts.
