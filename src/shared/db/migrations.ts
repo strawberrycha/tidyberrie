@@ -17,4 +17,5 @@ export function registerMigrations(db: Dexie) {
     taskExceptions: 'id,taskId,date,[taskId+date],movedTo,deletedAt',
   })
   db.version(3).stores({ dayThemes: 'id,weekday,date,themeKey,deletedAt' })
+  db.version(4).stores({ reminderDevice: 'id,&key,sourceAt' })
 }

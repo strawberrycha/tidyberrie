@@ -114,7 +114,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         </fieldset>}
         <fieldset>
           <legend>Reminders</legend>
-          <p>Reminder preferences are saved for later.</p>
+          <p>Tasks without a start time use 9:00 AM. Manage notification permissions in Settings.</p>
           <div className="task-checks">{offsets.map((offset, index) => <label className="task-check" key={offset}>
             <input type="checkbox" checked={value.reminders.includes(offset)} onChange={event => set('reminders', event.target.checked ? [...value.reminders, offset] : value.reminders.filter(item => item !== offset))} /> {reminderLabels[index]}
           </label>)}</div>
@@ -128,7 +128,15 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
             else fields.current.delete(item.id)
           }} value={item.title} required maxLength={120} onChange={event => updateSubtask(index, { title: event.target.value })}
             onKeyDown={event => { if (event.key === 'Enter' && !event.nativeEvent.isComposing) { event.preventDefault(); add(index) } }} />{error('subtasks.' + index + '.title')}</label>
-          <label>Due time<input type="time" {...field('subtasks.' + index + '.dueTime')} value={item.dueTime} onChange={event => updateSubtask(index, { dueTime: event.target.value })} />{error('subtasks.' + index + '.dueTime')}</label>
+          <label>Due time<input type="time" {...field('subtasks.' + index + '.dueTime')} value={item.dueTime} onChange={event => {
+            const dueTime = event.target.value
+            updateSubtask(index, { dueTime, reminder: dueTime ? item.reminder : undefined })
+          }} />{error('subtasks.' + index + '.dueTime')}</label>
+          <label>Subtask reminder<select value={item.reminder ?? ''} disabled={!item.dueTime}
+            onChange={event => updateSubtask(index, { reminder: offsets.find(offset => String(offset) === event.target.value) })}>
+            <option value="">No reminder</option>
+            {offsets.map((offset, index) => <option key={offset} value={offset}>{reminderLabels[index]}</option>)}
+          </select></label>
           <div className="task-actions">
             <button type="button" className="icon-button" disabled={!index} aria-label={'Move subtask ' + (index + 1) + ' up'} onClick={() => reorder(index, index - 1)}><ArrowUp size={18} aria-hidden /></button>
             <button type="button" className="icon-button" disabled={index === value.subtasks.length - 1} aria-label={'Move subtask ' + (index + 1) + ' down'} onClick={() => reorder(index, index + 1)}><ArrowDown size={18} aria-hidden /></button>

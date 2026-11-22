@@ -9,12 +9,17 @@ export const priorities = ['low', 'medium', 'high'] as const
 export const statuses = ['todo', 'doing', 'done'] as const
 export const statusLabels = { todo: 'To do', doing: 'In progress', done: 'Done' }
 export const offsets = [0, 5, 15, 30, 60, 1440] as const
+export const reminderOffset = z.literal(offsets)
 const title = z.string().trim().min(1, 'Enter a title.').max(120, 'Use at most 120 characters.')
 const time = z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, 'Enter a valid time.')
 const optionalTime = z.union([z.literal(''), time])
 
 export const subtaskInput = z.strictObject({
-  id: z.uuid(), title, done: z.boolean(), dueTime: optionalTime,
+  id: z.uuid(), title, done: z.boolean(), dueTime: optionalTime, reminder: reminderOffset.optional(),
+}).superRefine((value, context) => {
+  if (value.reminder !== undefined && !value.dueTime) {
+    context.addIssue({ code: 'custom', path: ['dueTime'], message: 'Set a due time for the reminder.' })
+  }
 })
 
 export const taskInput = z.strictObject({
@@ -22,7 +27,7 @@ export const taskInput = z.strictObject({
   startTime: optionalTime, endTime: optionalTime, allDay: z.boolean(),
   color: z.enum(colors), icon: z.enum(icons), tag: z.string().trim().max(30),
   priority: z.enum(priorities), status: z.enum(statuses), repeat: repeatSchema,
-  reminders: z.array(z.int().refine(offset => offsets.some(value => value === offset))).max(6),
+  reminders: z.array(reminderOffset).max(6),
   pinned: z.boolean(), autoCompleteWhenSubtasksDone: z.boolean(),
   subtasks: z.array(subtaskInput).max(100),
 }).superRefine((value, context) => {

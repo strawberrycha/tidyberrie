@@ -1,5 +1,5 @@
 import type { Records } from '../../shared/db/schemas'
-import { colors, emptyTask, icons } from './input'
+import { colors, emptyTask, icons, reminderOffset } from './input'
 import type { SubtaskInput, TaskInput } from './input'
 import { decodeRepeat, encodeRepeat } from './recurrence'
 
@@ -48,14 +48,18 @@ export function taskValue(group: TaskGroup, fallback: string, occurrence?: strin
   const { task } = group
   const base = emptyTask(fallback)
   const subtasks = group.subtasks.filter(item => !item.deletedAt).sort((a, b) => a.order - b.order)
-    .map(item => ({ id: item.id, title: item.title, done: item.done, dueTime: timeOf(item.dueAt) }))
+    .map(item => ({ id: item.id, title: item.title, done: item.done, dueTime: timeOf(item.dueAt),
+      reminder: reminderOffset.safeParse(item.reminder).data }))
   const value: TaskInput = {
     ...base, title: task.title, description: task.description, startDate: task.startAt?.slice(0, 10) ?? fallback,
     startTime: timeOf(task.startAt), endTime: timeOf(task.endAt), allDay: task.allDay,
     color: colors.find(color => color === task.color) ?? base.color,
     icon: icons.find(icon => icon === task.icon) ?? base.icon,
     tag: task.tag, priority: task.priority, status: task.status,
-    repeat: decodeRepeat(task.repeatRule), reminders: task.reminders, pinned: task.pinned,
+    repeat: decodeRepeat(task.repeatRule), reminders: task.reminders.flatMap(offset => {
+      const result = reminderOffset.safeParse(offset)
+      return result.success ? [result.data] : []
+    }), pinned: task.pinned,
     autoCompleteWhenSubtasksDone: task.autoCompleteWhenSubtasksDone, subtasks,
   }
   return occurrence

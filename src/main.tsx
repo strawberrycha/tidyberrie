@@ -1,6 +1,7 @@
 import { lazy, StrictMode, Suspense, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { Capacitor } from '@capacitor/core'
 import { CalendarDays, House, ListTodo, Settings2, Wallet } from 'lucide-react'
 import '@fontsource/nunito/latin-400.css'
 import '@fontsource/nunito/latin-700.css'
@@ -14,11 +15,13 @@ import { PwaStatus } from './shared/ui/PwaStatus'
 import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { Budget } from './features/budget/Budget'
 import { saveDailySnapshot } from './shared/db/backupService'
+import { ReminderProvider } from './features/reminders/useReminders'
 
 const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
 const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ default: module.Home })))
 const Calendar = lazy(() => import('./features/calendar/Calendar').then(module => ({ default: module.Calendar })))
 const Settings = lazy(() => import('./features/settings/Settings').then(module => ({ default: module.Settings })))
+const Reminders = lazy(() => import('./features/reminders/Reminders').then(module => ({ default: module.Reminders })))
 
 const screens = [
   { path: '/', title: 'Home', icon: House, Page: Home },
@@ -51,7 +54,7 @@ function DailySnapshots() {
 }
 
 function App() {
-  return <ThemeProvider><ToastProvider><BrowserRouter>
+  return <ThemeProvider><ToastProvider><ReminderProvider><BrowserRouter>
     <DailySnapshots />
     <a className="skip-link" href="#main">Skip to content</a>
     <div className="shell">
@@ -66,12 +69,15 @@ function App() {
           {screens.map(({ path, title, Page }) => <Route key={path} path={path} element={<>
             <h1>{title}</h1><Suspense fallback={<p role="status">Loading…</p>}><Page /></Suspense>
           </>} />)}
+          <Route path="/settings/reminders" element={<><h1>Reminders</h1>
+            <Suspense fallback={<p role="status">Loading…</p>}><Reminders /></Suspense>
+          </>} />
           <Route path="*" element={<><h1>Page unavailable</h1><NavLink to="/">Go to Home</NavLink></>} />
         </Routes>
       </main>
     </div>
-    <PwaStatus />
-  </BrowserRouter></ToastProvider></ThemeProvider>
+    {!Capacitor.isNativePlatform() && <PwaStatus />}
+  </BrowserRouter></ReminderProvider></ToastProvider></ThemeProvider>
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)

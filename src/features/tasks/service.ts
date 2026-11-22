@@ -66,6 +66,7 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
         ...stamp, createdAt: original?.createdAt ?? stamp.createdAt, id: item.id, taskId: task.id,
         title: item.title, order, done: recurring ? false : item.done,
         dueAt: item.dueTime ? localTimestamp(value.startDate, item.dueTime) : undefined,
+        reminder: item.reminder,
       }
     })
     return {

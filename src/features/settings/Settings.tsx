@@ -97,6 +97,10 @@ export function Settings() {
     </section>
     <DayThemeSettings />
     <section className="settings-card wide">
+      <h2>Reminders</h2>
+      <Link className="secondary" to="/settings/reminders">Open reminder settings</Link>
+    </section>
+    <section className="settings-card wide">
       <h2>Task Trash</h2>
       <Link className="secondary" to="/tasks?trash">Open task Trash</Link>
     </section>

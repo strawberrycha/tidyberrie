@@ -113,3 +113,44 @@ Headless Chrome verified a separate build with four temporary sticker inputs, in
 1. Run `npm ci` and `npm run assets` to see the missing keys. To add artwork, place a transparent square PNG at least 256px wide in `design-source/stickers/`, for example `study.png` or `avatar-happy.png`, then rerun `npm run assets`. Source PNGs stay local. Commit the generated manifest and WebPs when adding actual art.
 2. Run `npm run dev`. Open a task form, expand **More options**, and search for **Study**. Try Tab, arrow keys, Home, and End with the picker unfiltered. Choose an icon and save. Edit the task again to confirm the choice persisted. Repeat in **Settings → Day Themes** with a custom theme.
 3. Run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open the preview and wait until the service worker is active. Disable network in DevTools and reload. Check Home’s avatar and assigned theme badge. Reopen the task picker and confirm the saved selection and the cached illustration or Lucide fallback.
+
+## Phase 4 reminders and Android
+
+Web testing uses `npm run dev` or a production preview. For offline testing run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open **Settings → Reminders**. Deny browser notifications, set the one-minute test, and check that it appears in **Due reminders**. Snooze it, disable DevTools network, reload, and confirm it appears only after the snooze expires. Enable site notifications through your browser and repeat the test with Tidyberrie open.
+
+Web verification passed lint, strict typecheck, the production build, and all 45 tests. Headless Chrome used an accelerated page clock and verified denial fallback, persisted snooze, reload in offline mode, and acceptance of the notification by the service worker. The Android debug Java compile passed without signing an APK. The merged manifest contains the notification and exact-alarm permissions and the plugin’s boot receiver. Windows notification toasts and physical-phone delivery remain unverified.
+
+### Windows Android setup
+
+1. Install Android Studio 2025.2.1 or newer. In SDK Manager install Android SDK Platform 36, Build-Tools 36.0.0, and Platform-Tools. Use Studio’s bundled JDK 21 as the Gradle JDK. For command-line Gradle, set `JAVA_HOME` to Studio’s `jbr` directory and `ANDROID_HOME` to the SDK path shown in SDK Manager. [Capacitor environment setup](https://capacitorjs.com/docs/getting-started/environment-setup)
+2. From the Tidyberrie project folder, run:
+
+   ```powershell
+   npm ci
+   npm run build
+   npx cap sync android
+   npx cap open android
+   ```
+
+3. Enable Developer options and USB debugging on your phone. Connect by USB, accept the debugging prompt, select the phone in Android Studio, and click **Run**. Install your manufacturer’s Windows USB driver if Studio cannot see the phone.
+4. With Android Studio’s local debug signing configured, build a debug APK from the repository root using:
+
+   ```powershell
+   Push-Location android
+   .\gradlew.bat :app:assembleDebug
+   Pop-Location
+   ```
+
+   The APK is at `android/app/build/outputs/apk/debug/app-debug.apk`. Local signing material and build outputs stay outside Git.
+
+### Phone test checklist
+
+1. **App closed:** Allow notifications and exact alarms in Settings → Reminders. Schedule the one-minute test, leave the app and swipe it from Recents. Check for one system notification. Android **Force stop** is a separate OS condition.
+2. **Phone locked:** Schedule another test, lock the screen, and check the notification and lock-screen privacy setting. Allow time for Android’s idle alarm throttling.
+3. **Restart:** Create a timed task several minutes ahead with an at-time offset. Restart the phone, unlock it once, and leave Tidyberrie closed. Check that the alert is restored and appears once.
+4. **Airplane mode:** Repeat the locked-screen test while offline. Open the app afterward and check Due reminders.
+5. **Notification permission denied:** Turn off notifications in Android app settings. Reopen Tidyberrie, schedule the test, and check **Due reminders** after one minute.
+6. **Exact alarms denied:** Leave notifications enabled, turn exact alarms off, and reopen Tidyberrie. Schedule another test. Check the reported denial and Due reminders. Android may deliver the inexact system notification late.
+7. **Edits and cancellation:** Schedule an alert, change its task time, and confirm the old time is quiet. Repeat after completing, skipping, or deleting an occurrence. Snooze a due alert and reload to check persistence.
+
+Android restores the existing queue after the first unlock following reboot. Reopen Tidyberrie periodically to extend the 14-day queue. OEM battery restrictions, Doze, force-stop, and exact-alarm settings can affect delivery. Web reminders require a running Tidyberrie page.
