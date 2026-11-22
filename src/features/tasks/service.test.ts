@@ -138,7 +138,7 @@ it('preserves v1 tasks, children, exceptions and Day Themes through subsequent m
   const upgraded = openDatabase(name)
   try {
     await upgraded.open()
-    expect(upgraded.verno).toBe(4)
+    expect(upgraded.verno).toBe(5)
     expect(await upgraded.table('tasks').get(task.id)).toEqual(task)
     expect(await upgraded.table('subtasks').get(subtask.id)).toEqual(subtask)
     expect(await upgraded.table('taskExceptions').where('movedTo').equals('2026-11-23').first()).toEqual(exception)

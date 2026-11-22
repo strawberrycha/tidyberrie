@@ -102,3 +102,15 @@ export function nextOccurrence(rule: string, start: string, after: string, exclu
     return undefined
   }
 }
+
+export function finiteOccurrences(rule: string, start: string) {
+  try {
+    const options = ruleOptions(rule)
+    if (!options.count && !options.until) return undefined
+    const recurrence = parseRule(rule, start)
+    if (options.until && options.until > ordinal(addDays(start, 366 * 50))) return undefined
+    return recurrence.all().map(key)
+  } catch {
+    return [start]
+  }
+}

@@ -11,6 +11,11 @@ const text = z.string()
 const base = z.strictObject({ id, createdAt: timestamp, updatedAt: timestamp, deletedAt: timestamp.nullable() })
 const reminder = z.int().nonnegative()
 const backupReminder = z.boolean()
+export const budgetCardsSchema = z.array(z.strictObject({
+  key: z.enum(['leftMonth','leftOverall','netMonth','safe','money','income','available','paid','planned']),
+  label: text.trim().min(1).max(40), color: z.enum(['rose','blush','peach','berry','lavender','mint','honey','sky']),
+  visible: z.boolean(), home: z.boolean(),
+})).max(9).refine(cards => new Set(cards.map(card => card.key)).size === cards.length)
 
 export const recordSchemas = {
   tasks: base.extend({
@@ -34,12 +39,17 @@ export const recordSchemas = {
     : (record.weekday === undefined) !== (record.date === undefined)),
   accounts: base.extend({ name: text, type: z.enum(['cash', 'online']), openingBalance: centavos, color: text, icon: text }),
   incomes: base.extend({ amount: centavos.nonnegative(), source: text, expectedDate: date, status: z.enum(['expected', 'received']), accountId: id }),
-  expenses: base.extend({ amount: centavos.nonnegative(), category: text, date, status: z.enum(['planned', 'paid']), recurrenceRule: text.nullable(), accountId: id }),
+  expenses: base.extend({ amount: centavos.nonnegative(), category: text, date, status: z.enum(['planned', 'paid']),
+    recurrenceRule: text.nullable(), accountId: id, notes: text.max(2000).optional(), seriesId: id.optional() }),
+  transfers: base.extend({ amount: centavos.positive(), date, fromAccountId: id, toAccountId: id })
+    .refine(item => item.fromAccountId !== item.toAccountId),
   budgetHistory: base.extend({ entityType: text, entityId: id, field: text, oldValue: z.json(), newValue: z.json(), changedAt: timestamp }),
   settings: base.extend({
     key: z.enum(['preferences', 'undo-demo']), theme: z.enum(themes), storagePersistent: z.boolean().nullable(),
     budgetView: z.enum(['daily', 'monthly', 'yearly']), avatar: text, currency: z.literal('PHP'),
     weekStart: z.int().min(0).max(6), dashboardCards: z.array(text), backupReminder,
+    budgetConfigured: z.boolean().optional(), budgetCards: budgetCardsSchema.optional(),
+    budgetHorizon: z.enum(['month','sahod']).optional(),
   }),
 }
 
@@ -48,6 +58,7 @@ export const backupDataSchema = z.strictObject({
   taskExceptions: z.array(recordSchemas.taskExceptions), dayThemes: z.array(recordSchemas.dayThemes),
   accounts: z.array(recordSchemas.accounts), incomes: z.array(recordSchemas.incomes),
   expenses: z.array(recordSchemas.expenses), budgetHistory: z.array(recordSchemas.budgetHistory),
+  transfers: z.array(recordSchemas.transfers).default([]),
   settings: z.array(recordSchemas.settings),
 })
 

@@ -18,4 +18,8 @@ export function registerMigrations(db: Dexie) {
   })
   db.version(3).stores({ dayThemes: 'id,weekday,date,themeKey,deletedAt' })
   db.version(4).stores({ reminderDevice: 'id,&key,sourceAt' })
+  db.version(5).stores({
+    transfers: 'id,date,fromAccountId,toAccountId,deletedAt',
+    expenses: 'id,date,status,accountId,deletedAt,seriesId,&[seriesId+date]',
+  })
 }
