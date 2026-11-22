@@ -31,16 +31,16 @@ All hex values are proposals. Verify WCAG AA contrast for every text/background 
 
 - Self-host Caveat and Nunito via @fontsource. Use Caveat sparingly for headings and Nunito for body text. Use tabular numerals for money and a 12/14/16/20/24/32 type scale.
 - Use an 8-pt spacing grid and a soft shadow of `0 4px 16px rgba(194,69,107,0.10)`. Use radii of 16px for cards, 14px for buttons, and 999px for chips.
-- Limit laptop content width to about 1100px. Use two columns, list plus detail, on wide screens.
+- Use the phone layout as the design target.
 - Give each screen one primary action, represented by a floating “+” when adding is the primary action. Set key information in large type and supporting information in smaller, muted type.
 - Use 150–250ms ease-out transitions and honor `prefers-reduced-motion`.
 
 ## Illustration and icons
 
 - Use a cute girl avatar with separate transparent PNG or WebP poses for happy, cheering, sleepy, proud, and thinking moods.
-- Use individual illustrated sticker icons at 48–96px for day themes, the task icon picker, empty states, and achievements. Cut them individually from the user's planner icon sheet in `design-source/` or generate new ones. Keep illustration clear of data.
+- Use individual illustrated sticker icons at 48–96px for the task icon picker, empty states, and achievements. Cut them individually from the user's planner icon sheet in `design-source/` or generate new ones. Keep illustration clear of data.
 - Use simple Lucide icons at 20–24px with a 1.75 stroke for navigation and buttons.
 
 ## Components
 
-Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast with Undo, Empty state, mobile Tab bar, laptop Sidebar, Day Theme badge, and Avatar with moods.
+Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast with Undo, Empty state, Tab bar, and Avatar with moods.

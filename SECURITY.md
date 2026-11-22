@@ -1,18 +1,13 @@
 # Security
 
-Tidyberrie is a local-first app. IndexedDB holds planner, financial, and recovery data. Service worker caches contain static application resources within the app's origin and root scope. The generated Workbox worker precaches build assets and serves the app shell for navigation. It has no runtime data/API cache. Deploy the app on a dedicated origin and send the same CSP as the preview server, including its HTTP-only frame restriction.
+Tidyberrie is a private Android APK. The app has no cloud backend or accounts. IndexedDB and bundled assets live in the Android WebView. The APK has no service worker.
 
-## Threats and controls
+- **Local access.** App Lock slows PIN guessing and blocks casual access. It does not encrypt device data against someone with access to the app profile or device storage.
+- **Backups.** Plain JSON and CSV contain personal data. Optional encrypted JSON uses AES-256-GCM, random salt and nonce, and PBKDF2-SHA-256 with 600,000 iterations. Passphrases are used in memory only. A forgotten passphrase cannot be recovered.
+- **Imports and deletion.** Validate imports with Zod and size limits. Preview changes before applying them transactionally. Keep a safety snapshot when replacing or restoring. Permanent deletion requires typed confirmation.
+- **Injection.** Keep scripts and other resources same-origin under CSP. Render user content as text. Quote CSV cells and neutralize formula-leading values. Avoid logging personal data or credentials.
+- **Repository.** Keep local configuration, exports, and signing material out of Git. The secret scanner checks tracked files for common patterns and reports file names and line numbers only.
 
-- **Untrusted imports.** JSON is size-capped and parsed against strict Zod schemas, with a read-only preview. Merge and replacement are transactional. Replacement and snapshot restoration preserve a device-only safety copy for recovery. The delete command requires typing DELETE and clears records and recovery copies.
-- **Backup disclosure.** Plain JSON and CSV contain personal data. Encrypted JSON uses Web Crypto AES-256-GCM with 600,000 PBKDF2-SHA-256 iterations, a random 128-bit salt, a random 96-bit nonce, and authenticated version context. Passphrases are used in memory only. Keep the passphrase and backup file separately.
-- **Casual access.** PIN verification uses a separately salted PBKDF2-SHA-256 verifier with 600,000 iterations and persistent exponential retry delays. The PIN gate does not encrypt device storage. Someone with browser tooling or access to the browser profile can bypass the gate. Use device-level protection.
-- **Script and spreadsheet injection.** Production enforces an external same-origin script/style policy, blocks objects and base URL changes, and limits other fetches to the same origin. Preview also denies framing by header. Zod runs without JIT or eval. User data is rendered as React text. Source inspection found no raw HTML rendering or console logging of application data. CSV quotes all cells, escapes quotes, and prefixes an apostrophe before possible spreadsheet formula input.
-- **Repository exposure.** The tracked-file scan reports only paths and line numbers. It checks common provider token and private-key patterns. It does not inspect commit history or arbitrary secret formats. Keep backups and signing material out of Git.
-- **Dependencies.** npm audit reported four moderate findings across the development-only vite-plugin-pwa → workbox-build → glob → minimatch chain. The production-only audit reported zero. The npm suggestion rolls the plugin back across a major version; the current build keeps the known-working PWA stack. These glob dependencies run at build time against fixed project-owned paths.
+## Dependency audit
 
-## Optional Firebase sync
-
-Phase 7 is opt-in. The unconfigured build retains the original local-only CSP. A configured build adds the Firebase Auth and Firestore API origins, the project's Auth frame, and the Google Auth support script origin. Firestore rules deny unauthenticated and cross-user access, require bounded queries and increasing record revisions, prohibit hard deletes, and make budget history immutable. Device-only records stay outside the sync data set.
-
-Users can choose authenticated payload encryption before creating their cloud sync configuration. Firebase still sees account and record identifiers, timestamps, deletion markers, and access patterns. The passphrase and derived key stay in app memory. The local database remains readable to anyone with equivalent access to the browser profile. The per-browser account binding prevents incidental transfers to a second Google account. Turning off sync and wiping local records do not delete cloud copies.
+The full npm audit and production-only audit both reported zero findings at cleanup.

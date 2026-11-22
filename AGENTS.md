@@ -1,32 +1,14 @@
 # Tidyberrie project rules
 
-Work as a senior full-stack developer and UI/UX designer. Apply web app best practices, sound data structures and algorithms, careful spacing, hierarchy, contrast and accessibility, and secure, recoverable data handling.
+Tidyberrie is a private, offline Android APK for one phone, built with React, Vite, and Capacitor. The browser is for development and tests. The app has no public distribution, web/PWA build, sync, accounts, or analytics.
 
-## Toolchain
+- Read AGENTS.md first. Read only the relevant sections of the other project docs. Work on one module at a time. The current focus is Task Organizer. Stay within the stated task.
+- Use supported Node.js LTS and the pinned lockfile. Follow UI → hooks → services → repositories → Dexie. Validate external input with Zod in services. Use UUIDs and created, updated, and soft-delete timestamps for records. Add forward Dexie migrations, preserving existing data.
+- Store money as integer centavos. Use plain local dates for all-day items and recurrence keys. Keep timezone information on timed values. Keep budget formulas in a pure module.
+- Use design tokens for colors, spacing, and typography. Support WCAG AA, 48dp Android targets, 200% text, visible focus, and reduced motion. Pair color with accessible text or icons.
+- Keep CSP strict and bundle all runtime assets in the APK. Retain local backups, snapshots, Trash, and Undo. Request Android permissions only when needed.
+- Log each dependency and decision briefly in DECISIONS.md. Update existing docs in place. Create Markdown files only when explicitly asked.
+- Run lint, typecheck, unit tests, and build before finishing. Keep tests meaningful. Remove tests for retired features only when their behavior has been removed. Run APK or browser checks as applicable.
+- Commit locally in small conventional commits. Never push or handle credentials. Keep the project in OneDrive. Retry an EBUSY, EPERM, or file-lock failure once, then stop and report the failed command if it recurs.
 
-Node.js: any supported LTS (22, 24, or 26). Developed on v24.20.0. Declare engines in package.json as >=22.
-
-Use React, Vite, strict TypeScript, Tailwind CSS, Dexie.js (IndexedDB), vite-plugin-pwa, date-fns, rrule, Zod, React Hook Form, React Router, Lucide icons, Vitest, Testing Library, fake-indexeddb, ESLint, and Prettier. Later phases may use Recharts, dnd-kit, Playwright, Capacitor for Android, and optional Firebase sync.
-
-## Architecture and data
-
-- Organize features under `src/features/` (tasks, calendar, budget, dayTheme, settings) and shared code under `src/shared/` (ui, db, utils, theme).
-- Enforce UI → hooks → services → repositories → Dexie. Keep database access out of UI code.
-- Give every record a UUID `id` and `createdAt`, `updatedAt`, and `deletedAt` fields. Use soft deletion.
-- Store money as integer centavos. Store all-day items as plain date strings and timed items as ISO timestamps with timezone information.
-- Store recurring tasks as an RRULE with occurrence exceptions. Expand only the visible date range.
-- Keep all budget formulas in one pure, unit-tested module.
-
-## Recoverability, security, and offline use
-
-- Provide an Undo toast on destructive actions, Trash with 30-day restore, budget change history, automatic local snapshots, JSON export/import, and versioned schemas with migrations.
-- Validate all external input with Zod, especially imports. Render user text as text. Enforce a strict Content Security Policy.
-- Minimize dependencies, pin versions with a lockfile, keep secrets out of Git, and request only needed Android permissions when implementing native features.
-- Support full offline use. Self-host fonts via @fontsource and avoid runtime dependencies on external CDNs or remote assets.
-
-## UX and workflow
-
-- Use an 8-pt spacing grid, 44px minimum touch targets, one primary action per screen, clear hierarchy, WCAG AA contrast, visible focus rings, helpful empty states, and consistent patterns. Pair color cues with text or icons and respect `prefers-reduced-motion`.
-- Build one phase at a time and stay within its scope. Make small commits with clear messages and leave unrelated files alone.
-- When a requirement is ambiguous, choose the safest simple option and log it in DECISIONS.md. Before installing a package outside the approved stack, list the package and reason there.
-- For each implementation task, verify that the build, lint, typecheck, and tests pass. Verify offline behavior and accessibility, then write a change summary.
+Finish with what changed, files changed, how to run, manual test steps, limitations, and decisions needed.
