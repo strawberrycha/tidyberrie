@@ -87,9 +87,8 @@ main:has(.day-badge) h1 { padding-inline-end: 140px; }
 .file-label:focus-within { outline: 3px solid var(--primary); outline-offset: 4px; }
 fieldset { display: grid; justify-items: start; gap: 8px; min-width: 0; }
 fieldset label input { display: block; }
-.toast-region, .update { position: fixed; right: 16px; bottom: 88px; z-index: 4; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 8px; border-radius: 16px; }
-.toast-region:has(button), .update { padding: 8px 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
-.update { top: 8px; bottom: auto; }
+.toast-region { position: fixed; right: 16px; bottom: 88px; z-index: 4; display: flex; max-width: calc(100vw - 32px); align-items: center; gap: 8px; border-radius: 16px; }
+.toast-region:has(button) { padding: 8px 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow); }
 @media (min-width: 48rem) {
   .shell { display: grid; grid-template-columns: 192px minmax(0, 1fr); grid-template-rows: auto 1fr; align-items: start; gap: 16px 32px; padding: 32px; }
   .brand { grid-column: 1 / -1; }
@@ -155,6 +154,3 @@ dialog.settings-card::backdrop { background: #21111b99; }
 .toast-region button { pointer-events: auto; }
 
 .toast-region { right: 80px; max-width: calc(100vw - 96px); flex-wrap: wrap; }
-
-.settings-card .sync-checkbox { display: flex; align-items: center; gap: 8px; min-height: 44px; }
-.sync-checkbox input { width: 24px; accent-color: var(--primary); }

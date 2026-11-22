@@ -64,25 +64,13 @@ test('calculates Budget cards from an account, income, and an expense', async ({
   await expect(left).toContainText('₱1,100.01')
 })
 
-test('exports, previews, and replaces offline, then keeps the task and theme on reload', async ({ page, context }) => {
+test('exports, previews, and replaces a backup, then keeps the task and theme on reload', async ({ page }) => {
   await page.goto('/tasks')
   await addRepeatingTask(page)
   await page.getByRole('heading', { name: 'Water the plants' }).waitFor()
   await page.getByRole('link', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Theme', { exact: true }).selectOption('sakura')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sakura')
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready
-    if (!navigator.serviceWorker.controller) {
-      await new Promise<void>(resolve => navigator.serviceWorker.addEventListener('controllerchange', () => resolve(), { once: true }))
-    }
-  })
-  const manifestUrl = await page.locator('link[rel=manifest]').getAttribute('href')
-  expect(manifestUrl).toBeTruthy()
-  const manifest = await (await page.request.get(manifestUrl!)).json()
-  expect(manifest).toMatchObject({ display: 'standalone', start_url: '/' })
-  expect(manifest.icons.map((icon: { sizes: string }) => icon.sizes)).toEqual(expect.arrayContaining(['192x192', '512x512']))
-  await context.setOffline(true)
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sakura')
   const pending = page.waitForEvent('download')

@@ -38,13 +38,11 @@ export class WebNotificationScheduler implements NotificationScheduler {
 
   async sync(rows: Reminder[], now: number) {
     if ((await this.status()).notifications !== 'granted') return
-    const worker = await navigator.serviceWorker?.getRegistration()
     for (const row of rows) {
       if (row.at > now || row.at < now - minute || !await this.claims.claim(row.key, row.at)) continue
       const options = { body: row.title, tag: row.key, icon: '/icon-192.png' }
       try {
-        if (worker?.active) await worker.showNotification('Tidyberrie reminder', options)
-        else new Notification('Tidyberrie reminder', options)
+        new Notification('Tidyberrie reminder', options)
       } catch {
         await this.claims.release(row.key, row.at)
       }

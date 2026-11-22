@@ -1,7 +1,6 @@
 import { lazy, StrictMode, Suspense, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { Capacitor } from '@capacitor/core'
 import { CalendarDays, House, ListTodo, Settings2, Wallet } from 'lucide-react'
 import '@fontsource/nunito/latin-400.css'
 import '@fontsource/nunito/latin-700.css'
@@ -12,7 +11,6 @@ import './shared/ui/stickers.css'
 import { ThemeProvider, useTheme } from './shared/theme/ThemeProvider'
 import { ToastProvider, useToast } from './shared/ui/Toast'
 import { ScreenBoundary } from './shared/ui/ScreenBoundary'
-import { PwaStatus } from './shared/ui/PwaStatus'
 import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { saveDailySnapshot } from './shared/db/backupService'
 import { BackupNudge } from './features/settings/BackupNudge'
@@ -92,7 +90,6 @@ function App() {
         </Routes></ScreenContent>
       </main>
     </div>
-    {!Capacitor.isNativePlatform() && <PwaStatus />}
   </ReminderProvider></ToastProvider></AppLock></BrowserRouter></ThemeProvider>
 }
 
