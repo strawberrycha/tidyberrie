@@ -1,0 +1,73 @@
+import { StrictMode, useEffect } from 'react'
+import { createRoot } from 'react-dom/client'
+import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { CalendarDays, House, ListTodo, Settings2, Wallet } from 'lucide-react'
+import '@fontsource/nunito/latin-400.css'
+import '@fontsource/nunito/latin-700.css'
+import '@fontsource/nunito/latin-800.css'
+import '@fontsource/caveat/latin-700.css'
+import './shared/theme/styles.css'
+import { ThemeProvider, useTheme } from './shared/theme/ThemeProvider'
+import { ToastProvider, useToast } from './shared/ui/Toast'
+import { PwaStatus } from './shared/ui/PwaStatus'
+import { Home } from './features/dayTheme/Home'
+import { Calendar } from './features/calendar/Calendar'
+import { Tasks } from './features/tasks/Tasks'
+import { Budget } from './features/budget/Budget'
+import { Settings } from './features/settings/Settings'
+import { saveDailySnapshot } from './shared/db/backupService'
+
+const screens = [
+  { path: '/', title: 'Home', icon: House, Page: Home },
+  { path: '/calendar', title: 'Calendar', icon: CalendarDays, Page: Calendar },
+  { path: '/tasks', title: 'Tasks', icon: ListTodo, Page: Tasks },
+  { path: '/budget', title: 'Budget', icon: Wallet, Page: Budget },
+  { path: '/settings', title: 'Settings', icon: Settings2, Page: Settings },
+]
+
+function DailySnapshots() {
+  const { preferences } = useTheme()
+  const show = useToast()
+
+  useEffect(() => {
+    if (!preferences) return
+    function capture() {
+      void saveDailySnapshot().catch(() => show({ message: 'Could not save a local snapshot.' }))
+    }
+    capture()
+    window.addEventListener('focus', capture)
+    const timer = window.setInterval(capture, 60_000)
+    return () => {
+      window.removeEventListener('focus', capture)
+      window.clearInterval(timer)
+    }
+  }, [preferences, show])
+
+  return null
+}
+
+function App() {
+  return <ThemeProvider><ToastProvider><BrowserRouter>
+    <DailySnapshots />
+    <a className="skip-link" href="#main">Skip to content</a>
+    <div className="shell">
+      <header className="brand"><NavLink to="/"><img src="/icon-192.png" alt="" width="40" height="40" /> Tidyberrie</NavLink></header>
+      <nav className="navigation" aria-label="Main navigation">
+        {screens.map(({ path, title, icon: Icon }) => <NavLink key={path} to={path} end>
+          <Icon size={22} strokeWidth={1.75} aria-hidden="true" /><span>{title}</span>
+        </NavLink>)}
+      </nav>
+      <main id="main" tabIndex={-1}>
+        <Routes>
+          {screens.map(({ path, title, Page }) => <Route key={path} path={path} element={<>
+            <h1>{title}</h1><Page />
+          </>} />)}
+          <Route path="*" element={<><h1>Page unavailable</h1><NavLink to="/">Go to Home</NavLink></>} />
+        </Routes>
+      </main>
+    </div>
+    <PwaStatus />
+  </BrowserRouter></ToastProvider></ThemeProvider>
+}
+
+createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)
