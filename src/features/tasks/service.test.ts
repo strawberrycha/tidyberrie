@@ -116,7 +116,7 @@ it('rejects invalid titles, long fields, dates and times at the service layer', 
   ]) expect(() => saveTask({ ...draft(), ...data }, 1)).toThrow()
 })
 
-it('preserves v1 task, child and exception records through the v2 migration', async () => {
+it('preserves v1 tasks, children, exceptions and Day Themes through subsequent migrations', async () => {
   const name = 'migration-' + crypto.randomUUID()
   const legacy = new Dexie(name)
   legacy.version(1).stores({
@@ -129,17 +129,20 @@ it('preserves v1 task, child and exception records through the v2 migration', as
   const task = { ...metadata(), ...storedTask(draft(), 1) }
   const subtask = { ...metadata(), taskId: task.id, title: 'Legacy', done: false, order: 0 }
   const exception = { ...metadata(), taskId: task.id, date: today, action: 'moved', movedTo: '2026-11-23', subtaskStates: {} }
+  const theme = { ...metadata(), weekday: 1, name: 'Study', color: 'lavender', icon: 'book' }
   await legacy.table('tasks').add(task)
   await legacy.table('subtasks').add(subtask)
   await legacy.table('taskExceptions').add(exception)
+  await legacy.table('dayThemes').add(theme)
   legacy.close()
   const upgraded = openDatabase(name)
   try {
     await upgraded.open()
-    expect(upgraded.verno).toBe(2)
+    expect(upgraded.verno).toBe(3)
     expect(await upgraded.table('tasks').get(task.id)).toEqual(task)
     expect(await upgraded.table('subtasks').get(subtask.id)).toEqual(subtask)
     expect(await upgraded.table('taskExceptions').where('movedTo').equals('2026-11-23').first()).toEqual(exception)
+    expect(await upgraded.table('dayThemes').get(theme.id)).toEqual(theme)
   } finally {
     await upgraded.delete()
   }

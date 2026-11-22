@@ -16,4 +16,5 @@ export function registerMigrations(db: Dexie) {
   db.version(2).stores({
     taskExceptions: 'id,taskId,date,[taskId+date],movedTo,deletedAt',
   })
+  db.version(3).stores({ dayThemes: 'id,weekday,date,themeKey,deletedAt' })
 }

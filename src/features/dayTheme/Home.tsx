@@ -1,9 +1,69 @@
-import { Sparkles, Sun } from 'lucide-react'
-import { EmptyState } from '../../shared/ui/EmptyState'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Wallet } from 'lucide-react'
+import { dateLabel, localDate, weekdayOf } from '../calendar/dates'
+import { PlannerAddButton, PlannerTaskList, QuickAdd } from '../calendar/PlannerTasks'
+import { emptyDay } from '../calendar/taskWindow'
+import { useCalendarData, useLocalClock } from '../calendar/useCalendarData'
+import { Avatar } from './Avatar'
+import { DayThemeBadge } from './DayThemeBadge'
+import { dashboardSummary } from './dashboard'
+import { resolveDayTheme } from './model'
+import { useDayThemes } from './useDayThemes'
+import '../tasks/tasks.css'
+import '../calendar/planner.css'
 
 export function Home() {
-  return <>
-    <div className="day-badge"><Sun size={18} aria-hidden="true" /> Day Theme</div>
-    <EmptyState title="A fresh start" description="Your plans for the day will find a home here." action="Quick add" icon={Sparkles} />
-  </>
+  const now = useLocalClock()
+  const today = localDate(now)
+  const [draft, setDraft] = useState<string>()
+  const data = useCalendarData({ from: today, through: today })
+  const themes = useDayThemes()
+  const theme = resolveDayTheme(themes.index, today, weekdayOf(today))
+  const day = data.days.get(today) ?? emptyDay
+  const { done, next, overdue, mood } = useMemo(() => dashboardSummary(day.rows, data.groups, now), [day, data.groups, now])
+  const total = day.rows.length
+  const circumference = 2 * Math.PI * 38
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+
+  return <div className="planner-view">
+    <section className="planner-card planner-greeting">
+      <div><h2>{greeting}</h2><p><time dateTime={today}>{dateLabel(today)}</time></p></div>
+      <DayThemeBadge theme={theme} />
+      <Avatar mood={mood} />
+    </section>
+    {data.error && <p role="alert">Could not load today’s tasks.</p>}
+    {themes.error && <p role="alert">Could not load Day Themes.</p>}
+    {data.loading && <p role="status">Loading today’s tasks…</p>}
+    <div className="planner-home-grid">
+      <section className="planner-card planner-progress">
+        <h2>Today’s progress</h2>
+        <div className="planner-ring">
+          <svg viewBox="0 0 96 96" aria-hidden="true">
+            <circle className="planner-ring-track" cx="48" cy="48" r="38" />
+            {done > 0 && <circle className="planner-ring-value" cx="48" cy="48" r="38" strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - done / total)} />}
+          </svg>
+        </div>
+        <p role="status">{done} of {total} done</p>
+        <Link className="secondary" to="/tasks?list=Overdue">{overdue} overdue</Link>
+      </section>
+      <section className="planner-card">
+        <h2>Next up</h2>
+        {next ? <div><strong>{next.value.title}</strong><p>{next.value.allDay || !next.value.startTime ? 'Any time today' : next.value.startTime}</p></div>
+          : <p>No upcoming tasks today.</p>}
+      </section>
+    </div>
+    <section className="planner-card">
+      <h2>Today’s tasks</h2>
+      {!total && !data.loading && <p>Nothing planned today.</p>}
+      <PlannerTaskList key={today} rows={day.rows} now={now} />
+    </section>
+    <section className="planner-card">
+      <h2>Budget</h2>
+      <p className="planner-budget"><Wallet size={22} aria-hidden /> Set up your budget</p>
+    </section>
+    <PlannerAddButton open={() => setDraft(today)} />
+    {draft && <QuickAdd draft={{ date: draft }} close={() => setDraft(undefined)} />}
+  </div>
 }

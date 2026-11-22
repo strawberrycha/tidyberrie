@@ -2,7 +2,9 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 
-export function TaskDialog({ title, close, children }: { title: string; close: () => void; children: ReactNode }) {
+export function TaskDialog({ title, close, children, side = false }: {
+  title: string; close: () => void; children: ReactNode; side?: boolean
+}) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const dialog = ref.current!
@@ -12,7 +14,7 @@ export function TaskDialog({ title, close, children }: { title: string; close: (
     return () => dialog.close()
   }, [])
 
-  return <dialog ref={ref} className="task-dialog" aria-label={title} onCancel={event => {
+  return <dialog ref={ref} className={side ? 'task-dialog calendar-side' : 'task-dialog'} aria-label={title} onCancel={event => {
     event.preventDefault()
     close()
   }} onKeyDown={event => {

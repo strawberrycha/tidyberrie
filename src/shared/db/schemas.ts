@@ -26,8 +26,12 @@ export const recordSchemas = {
     movedTo: dateOrTime.nullable(), subtaskStates: z.record(id, z.boolean()),
     override: taskInput.optional(),
   }),
-  dayThemes: base.extend({ weekday: z.int().min(0).max(6).optional(), date: date.optional(), name: text, icon: text, color: text })
-    .refine(record => (record.weekday === undefined) !== (record.date === undefined)),
+  dayThemes: base.extend({
+    weekday: z.int().min(0).max(6).optional(), date: date.optional(), name: text, icon: text, color: text,
+    catalog: z.literal(true).optional(), themeKey: text.max(40).optional(),
+  }).refine(record => record.catalog
+    ? record.weekday === undefined && record.date === undefined && record.themeKey === undefined
+    : (record.weekday === undefined) !== (record.date === undefined)),
   accounts: base.extend({ name: text, type: z.enum(['cash', 'online']), openingBalance: centavos, color: text, icon: text }),
   incomes: base.extend({ amount: centavos.nonnegative(), source: text, expectedDate: date, status: z.enum(['expected', 'received']), accountId: id }),
   expenses: base.extend({ amount: centavos.nonnegative(), category: text, date, status: z.enum(['planned', 'paid']), recurrenceRule: text.nullable(), accountId: id }),

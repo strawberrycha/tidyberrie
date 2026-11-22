@@ -9,7 +9,7 @@ import { localDate } from './recurrence'
 const priorityIcons = { low: ArrowDown, medium: Minus, high: ArrowUp }
 
 export function TaskCard({ row, now, canComplete, disabled, edit, remove, check }: {
-  row: TaskRow; now: Date; canComplete: boolean; disabled: boolean; edit: () => void; remove: () => void;
+  row: TaskRow; now: Date; canComplete: boolean; disabled: boolean; edit?: () => void; remove?: () => void;
   check: (done: boolean, subtaskId?: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -51,6 +51,9 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check 
         </label>
       </li>)}</ul>
     </div>}
-    <div className="task-actions"><button className="secondary" type="button" disabled={disabled} onClick={edit}>Edit</button><button className="secondary" type="button" disabled={disabled} onClick={remove}>Delete</button></div>
+    {(edit || remove) && <div className="task-actions">
+      {edit && <button className="secondary" type="button" disabled={disabled} onClick={edit}>Edit</button>}
+      {remove && <button className="secondary" type="button" disabled={disabled} onClick={remove}>Delete</button>}
+    </div>}
   </article>
 }

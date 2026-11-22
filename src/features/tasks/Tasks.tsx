@@ -40,16 +40,17 @@ function useClock() {
 
 export function Tasks() {
   const [params] = useSearchParams()
-  return <TaskView key={params.has('trash') ? 'trash' : 'tasks'} trash={params.has('trash')} />
+  const initial = params.get('list') === 'Overdue' ? 'Overdue' : 'Today'
+  return <TaskView key={params.has('trash') ? 'trash' : initial} trash={params.has('trash')} initial={initial} />
 }
 
-function TaskView({ trash }: { trash: boolean }) {
+function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const state = useTaskGroups(trash)
   const { preferences } = useTheme()
   const actions = useTaskActions()
   const now = useClock()
   const today = localDate(now)
-  const [list, setList] = useState<SmartList>('Today')
+  const [list, setList] = useState<SmartList>(initial)
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState({ color: '', tag: '', priority: '', status: '' })
   const [sort, setSort] = useState('date')

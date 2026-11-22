@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Database, Palette, RotateCcw, Upload } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { DayThemeSettings } from '../dayTheme/DayThemeSettings'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { themes } from '../../shared/theme/tokens'
 import { useToast } from '../../shared/ui/Toast'
@@ -94,6 +95,7 @@ export function Settings() {
         }}>Restore sample</button>
         : <button type="button" className="secondary" disabled={!tools.demo} onClick={() => void tools.remove()}>Delete sample</button>}
     </section>
+    <DayThemeSettings />
     <section className="settings-card wide">
       <h2>Task Trash</h2>
       <Link className="secondary" to="/tasks?trash">Open task Trash</Link>
