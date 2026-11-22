@@ -1,5 +1,5 @@
 import { z } from '../../shared/db/strictValidation'
-import { taskInput } from './input'
+import { taskInput, taskScheduleInput } from './input'
 import type { TaskInput } from './input'
 import { completedStatus, localTimestamp, storedTask, taskValue } from './model'
 import type { TaskGroup } from './model'
@@ -44,7 +44,7 @@ function occurrenceRecord(group: TaskGroup, date: string, value: TaskInput, stam
 }
 
 export function saveTask(input: TaskInput, weekStart: number, id?: string, occurrence?: string) {
-  const value = taskInput.parse(input)
+  const value = id ? taskInput.parse(input) : taskScheduleInput().parse(input)
   z.int().min(0).max(6).parse(weekStart)
   if (id) uuid.parse(id)
   if (occurrence) {
@@ -53,6 +53,7 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
   }
   return repository.changeGroup(id, (group, stamp) => {
     if (id) group = activeGroup(group)
+    if (group) taskScheduleInput(taskValue(group, localDate(), occurrence)).parse(value)
     if (occurrence && group) return occurrenceRecord(group, occurrence, value, stamp, 'edit')
     const base = storedTask(value, weekStart)
     const recurring = !!base.repeatRule
@@ -77,14 +78,16 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
   })
 }
 
-export function changeCompletion(id: string, occurrence: string | undefined, done: boolean, subtaskId?: string) {
+export function changeCompletion(id: string, occurrence: string | undefined, done: boolean, subtaskId?: string, reminderDate?: string) {
   uuid.parse(id)
   if (occurrence) occurrenceDate.parse(occurrence)
+  if (reminderDate) occurrenceDate.parse(reminderDate)
   if (subtaskId) uuid.parse(subtaskId)
   z.boolean().parse(done)
   return repository.changeGroup(id, (previous, stamp) => {
     const group = activeGroup(previous)
-    const value = taskValue(group, localDate(), occurrence)
+    const date = occurrence ?? (group.task.repeatRule ? reminderDate : undefined)
+    const value = taskValue(group, localDate(), date)
     if (subtaskId) {
       const item = value.subtasks.find(item => item.id === subtaskId)
       if (!item) throw new Error('Subtask unavailable')
@@ -96,7 +99,7 @@ export function changeCompletion(id: string, occurrence: string | undefined, don
         value.subtasks = value.subtasks.map(item => ({ ...item, done }))
       }
     }
-    if (occurrence) return occurrenceRecord(group, occurrence, value, stamp, 'check')
+    if (date) return occurrenceRecord(group, date, value, stamp, 'check')
     const states = new Map(value.subtasks.map(item => [item.id, item.done]))
     return {
       ...group, task: { ...group.task, status: value.status, updatedAt: stamp.updatedAt },

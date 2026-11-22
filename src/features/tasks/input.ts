@@ -1,5 +1,6 @@
 import { z } from '../../shared/db/strictValidation'
 import { iconKeys } from '../../assets/stickers/keys'
+import { localDate } from './recurrence'
 import { defaultRepeat, repeatSchema } from './repeatInput'
 
 export const colors = ['rose', 'blush', 'peach', 'berry', 'lavender', 'mint', 'honey', 'sky'] as const
@@ -44,6 +45,23 @@ export const taskInput = z.strictObject({
 
 export type TaskInput = z.infer<typeof taskInput>
 export type SubtaskInput = z.infer<typeof subtaskInput>
+
+// Form and service share the same rule. Stored/imported records use the structural schema.
+export function taskScheduleInput(previous?: TaskInput, now = new Date()) {
+  return taskInput.superRefine((value, context) => {
+    const today = localDate(now)
+    const changedDate = !previous || previous.startDate !== value.startDate
+    const changedStart = changedDate || previous.allDay !== value.allDay || previous.startTime !== value.startTime
+    if (value.startDate < today && changedDate) {
+      context.addIssue({ code: 'custom', path: ['startDate'], message: 'Pick today or a later date.' })
+      return
+    }
+    if (!value.allDay && value.startTime && (previous ? changedStart : value.reminders.length > 0)
+      && +new Date(value.startDate + 'T' + value.startTime) < +now) {
+      context.addIssue({ code: 'custom', path: ['startTime'], message: 'That time has already passed.' })
+    }
+  })
+}
 
 export function emptyTask(date: string): TaskInput {
   return {

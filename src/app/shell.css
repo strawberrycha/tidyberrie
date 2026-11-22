@@ -1,5 +1,7 @@
-.phone-shell { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
-.tab-panel { flex: 1; min-height: 0; overflow-y: auto; padding: max(var(--space-2), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) calc(var(--actual-tab-height, var(--default-tab-height)) + var(--fab-size) + var(--space-4) + env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left)); }
+.phone-shell { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.phone-shell::before { content: ''; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top); z-index: 6; background: var(--bg); pointer-events: none; }
+.reminder-help summary { min-height: var(--touch); cursor: pointer; }
+.tab-panel { flex: 1; min-height: 0; overflow-y: auto; padding: 0 max(var(--space-4), env(safe-area-inset-right)) calc(var(--actual-tab-height, var(--default-tab-height)) + var(--fab-size) + var(--space-4) + env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left)); }
 .tab-panel[hidden] { display: none; }
 .phone-tabs { position: relative; z-index: 4; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); background: var(--surface); border-top: var(--hairline) solid var(--border); padding: var(--space-1) max(var(--space-1), env(safe-area-inset-right)) max(var(--space-1), env(safe-area-inset-bottom)) max(var(--space-1), env(safe-area-inset-left)); }
 .phone-tabs a { min-height: var(--app-bar-height); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: var(--caption); line-height: 1.2; padding: var(--outline); text-align: center; color: var(--text-muted); overflow-wrap: anywhere; }
@@ -15,7 +17,7 @@
 .more-row svg, .home-view svg { flex: none; }
 .home-view :is(button, a.secondary, .home-reminder) { min-height: var(--touch); }
 .home-top, .home-heading, .home-reminder { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.home-top { justify-content: space-between; min-height: var(--touch); }
+.home-top { position: sticky; top: 0; z-index: 2; justify-content: space-between; min-height: calc(var(--touch) + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); background: var(--bg); }
 .home-top h1 { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-size: var(--title-size); overflow-wrap: anywhere; }
 .home-top time, .home-task-meta { font-variant-numeric: tabular-nums; }
 .home-reminder, .home-card { border-radius: var(--space-4); border: var(--hairline) solid var(--border); background: var(--surface); padding: var(--space-2); }
@@ -113,7 +115,7 @@ html[data-text-size="200"] { font-size: 200%; }
 :is(.home-progress, .task-progress) progress::-webkit-progress-bar { background: var(--accent-1); }
 :is(.home-progress, .task-progress) progress::-webkit-progress-value { background: var(--primary); border-radius: var(--pill); }
 :is(.home-progress, .task-progress) progress::-moz-progress-bar { background: var(--primary); border-radius: var(--pill); }
-.app-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--space-1); min-height: var(--app-bar-height); background: var(--bg); }
+.app-bar { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--space-1); min-height: calc(var(--app-bar-height) + env(safe-area-inset-top)); padding-top: env(safe-area-inset-top); background: var(--bg); }
 .app-bar h1 { flex: 1; min-width: 0; margin: 0; font: var(--semi) var(--title-size)/var(--title-line) Nunito, sans-serif; overflow-wrap: anywhere; }
 .app-bar-actions { display: flex; align-items: center; margin-inline-start: auto; }
 .app-bar .icon-button { width: var(--touch); height: var(--touch); flex: none; }

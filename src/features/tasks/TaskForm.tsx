@@ -1,19 +1,23 @@
 import { useId, useRef, useState } from 'react'
+import { useMinuteClock } from '../../app/useMinuteClock'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { colorLabels, colors, newSubtask, offsets, priorities, statusLabels, statuses, taskInput } from './input'
+import { colorLabels, colors, newSubtask, offsets, priorities, statusLabels, statuses, taskScheduleInput } from './input'
 import type { SubtaskInput, TaskInput } from './input'
 import { IconPicker } from './IconPicker'
-import { repeatModes, weekdays } from './recurrence'
+import { addDays, localDate, repeatModes, weekdays } from './recurrence'
 import type { Repeat } from './recurrence'
 import { TaskDialog } from './TaskDialog'
 
 const repeatLabels = ['Once', 'Daily', 'Weekdays', 'Weekends', 'Specific days', 'Weekly', 'Monthly', 'Yearly', 'Custom interval']
 const reminderLabels = ['At scheduled time', '5 minutes before', '15 minutes before', '30 minutes before', '1 hour before', '1 day before']
 
-export function TaskForm({ initial, title, occurrence, busy, close, save }: {
-  initial: TaskInput; title: string; occurrence?: boolean; busy: boolean; close: () => void; save: (value: TaskInput) => void
+export function TaskForm({ initial, title, occurrence, editing = false, busy, close, save }: {
+  initial: TaskInput; title: string; occurrence?: boolean; editing?: boolean; busy: boolean; close: () => void; save: (value: TaskInput) => void
 }) {
   const [value, setValue] = useState(initial)
+  const today = localDate(useMinuteClock())
+  const minimum = editing && initial.startDate < today && value.startDate === initial.startDate ? initial.startDate : today
+  const dateChips = [['Today', today], ['Tomorrow', addDays(today, 1)], ['Next week', addDays(today, 7)]]
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [more, setMore] = useState(false)
   const prefix = useId()
@@ -63,7 +67,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
   return <TaskDialog title={title} close={cancel}>
     <form className="task-form" noValidate onSubmit={event => {
       event.preventDefault()
-      const result = taskInput.safeParse(value)
+      const result = taskScheduleInput(editing ? initial : undefined).safeParse(value)
       if (result.success) { setErrors({}); save(result.data); return }
       const messages = Object.fromEntries(result.error.issues.map(issue => [issue.path.join('.'), issue.message]))
       setErrors(messages)
@@ -71,9 +75,20 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
       requestAnimationFrame(() => event.target instanceof HTMLElement &&
         event.target.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
     }}>
-      <label>Title<input data-first-field {...field('title')} value={value.title} maxLength={120} required onChange={event => set('title', event.target.value)} />{error('title')}</label>
+      <label><span className="task-field-label">Title</span><input data-first-field {...field('title')} value={value.title} maxLength={120} required onChange={event => set('title', event.target.value)} />{error('title')}</label>
+      <div className="task-date-chips" aria-label="Quick dates" role="group">
+        {dateChips.map(([label, date]) => <button className="secondary" key={date} type="button"
+          aria-pressed={value.startDate === date} onClick={() => {
+            set('startDate', date)
+            setErrors(previous => ({ ...previous, startDate: '' }))
+          }}><span>{label}</span></button>)}
+      </div>
       <div className="task-fields">
-        <label>Date<input {...field('startDate')} type="date" required value={value.startDate} onChange={event => set('startDate', event.target.value)} />{error('startDate')}</label>
+        <label><span className="task-field-label">Date</span><input {...field('startDate')} type="date" min={minimum} required value={value.startDate} onChange={event => {
+          const date = event.target.value
+          set('startDate', date)
+          setErrors(previous => ({ ...previous, startDate: date && date < today && (!editing || date !== initial.startDate) ? 'Pick today or a later date.' : '' }))
+        }} />{error('startDate')}</label>
         <label className="task-check"><input type="checkbox" checked={value.allDay} onChange={event => set('allDay', event.target.checked)} /> All day</label>
         {!value.allDay && <>
           <label>Start time<input {...field('startTime')} type="time" value={value.startTime} onChange={event => set('startTime', event.target.value)} />{error('startTime')}</label>
@@ -126,7 +141,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         </fieldset>
       </div>
       <fieldset className="subtask-editor">
-        <legend>Subtasks</legend>
+        <legend className="task-field-label">Subtasks</legend>
         {value.subtasks.map((item, index) => <div className="subtask-edit" key={item.id}>
           <label>Subtask {index + 1}<input {...field('subtasks.' + index + '.title')} ref={element => {
             if (element) fields.current.set(item.id, element)
@@ -150,7 +165,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         </div>)}
         {error('subtasks')}
         <button type="button" className="secondary" disabled={value.subtasks.length >= 100} onClick={() => add()}><Plus size={18} aria-hidden /> Add subtask</button>
-        <label className="task-check"><input type="checkbox" checked={value.autoCompleteWhenSubtasksDone} onChange={event => set('autoCompleteWhenSubtasksDone', event.target.checked)} /> Complete automatically when all subtasks are checked</label>
+        {!!value.subtasks.length && <label className="task-check"><input type="checkbox" checked={value.autoCompleteWhenSubtasksDone} onChange={event => set('autoCompleteWhenSubtasksDone', event.target.checked)} /> Complete automatically when all subtasks are checked</label>}
       </fieldset>
       {!!Object.keys(errors).length && <p className="task-error" role="alert">Check the highlighted fields.</p>}
       <footer className="task-actions task-form-footer"><button className="secondary" type="button" disabled={busy} onClick={cancel}>Cancel</button><button className="primary" type="submit" disabled={busy}>Save task</button></footer>

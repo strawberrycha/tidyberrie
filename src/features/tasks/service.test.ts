@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto'
 import Dexie from 'dexie'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { db, openDatabase, table } from '../../shared/db/database'
 import { metadata } from '../../shared/db/repository'
 import { emptyTask, newSubtask } from './input'
@@ -16,8 +16,27 @@ const draft = () => ({ ...emptyTask(today), title: ' My task ' })
 const child = (title: string) => ({ ...newSubtask(), title })
 const group = async () => (await readGroups())[0]
 
+beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(now) })
 afterEach(async () => {
+  vi.useRealTimers()
   await Promise.all(db.tables.map(target => target.clear()))
+})
+
+it('validates local dates and reminder times without rejecting existing overdue tasks', async () => {
+  const previous = { ...draft(), startDate: '2026-11-21' }
+  expect(() => saveTask(previous, 1)).toThrow('Pick today or a later date.')
+  expect(() => saveTask({ ...previous, repeat: { ...defaultRepeat, mode: 'daily' } }, 1)).toThrow('Pick today or a later date.')
+  const timed = { ...draft(), allDay: false, reminders: [0] as const }
+  expect(() => saveTask({ ...timed, reminders: [...timed.reminders], startTime: '14:59' }, 1)).toThrow('That time has already passed.')
+  await saveTask({ ...timed, reminders: [...timed.reminders], startTime: '15:01' }, 1)
+  const { task } = await group()
+  vi.setSystemTime(new Date(2026, 10, 23, 0, 0))
+  const overdue = taskValue(await group(), today)
+  await saveTask({ ...overdue, title: 'Updated overdue' }, 1, task.id)
+  await expect(saveTask({ ...overdue, startDate: previous.startDate }, 1, task.id)).rejects.toThrow('Pick today or a later date.')
+  await deleteTask(task.id)
+  await restoreTask(task.id)
+  expect((await group()).task.title).toBe('Updated overdue')
 })
 
 it('creates, edits, and undoes with new or reordered subtasks', async () => {
@@ -74,6 +93,7 @@ it('moves, skips, and completes separate occurrences with independent subtask ch
 })
 
 it('supports smart list date boundaries with one-time and repeating tasks', async () => {
+  vi.setSystemTime(new Date(2026, 10, 20, 12))
   await saveTask({ ...draft(), startDate: '2026-11-20', title: 'Repeat', repeat: { ...defaultRepeat, mode: 'daily' } }, 1)
   await saveTask({ ...draft(), startDate: '2026-11-21', title: 'Late' }, 1)
   await saveTask({ ...draft(), startDate: '2026-11-29', title: 'Next week' }, 1)

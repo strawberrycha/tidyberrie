@@ -1,3 +1,4 @@
+import 'fake-indexeddb/auto'
 import { expect, it, vi } from 'vitest'
 import type { LocalNotificationSchema, LocalNotificationsPlugin } from '@capacitor/local-notifications'
 import { emptyTask, newSubtask } from '../tasks/input'
@@ -5,8 +6,12 @@ import type { TaskInput } from '../tasks/input'
 import { storedTask } from '../tasks/model'
 import type { TaskGroup } from '../tasks/model'
 import { defaultRepeat } from '../tasks/recurrence'
-import { moduleReminders } from './service'
-import { AndroidLocalNotificationScheduler, selectScheduler } from './schedulers'
+import { changeCompletion, deleteTask, restoreTask, saveTask } from '../tasks/service'
+import { readGroups } from '../tasks/repository'
+import { addDays, localDate } from '../tasks/recurrence'
+import { moduleReminders, startReminders } from './service'
+import { openDeviceSettings } from './deviceSettings'
+import { AndroidLocalNotificationScheduler, checkAccess, selectScheduler } from './schedulers'
 import { applyDispositions, minute, notificationId, reminderWindow, snoozeTime } from './window'
 
 function stamp() {
@@ -92,9 +97,9 @@ it('selects the scheduler without requesting permissions and reconciles Android 
   const mock = {
     checkPermissions: vi.fn().mockResolvedValue({ display: 'granted' }), areEnabled: vi.fn().mockResolvedValue({ value: true }),
     checkExactNotificationSetting: exact, requestPermissions: request,
-    getAll: async () => ({ notifications: [...pending.values()] }), createChannel: vi.fn(), schedule, cancel,
+    getPending: async () => ({ notifications: [...pending.values()] }), createChannel: vi.fn(), schedule, cancel,
   } as unknown as LocalNotificationsPlugin
-  const scheduler = new AndroidLocalNotificationScheduler(mock)
+  const scheduler = new AndroidLocalNotificationScheduler(mock, true, () => 10000)
   const original = { key: 'task/date/task/5', title: 'Read', at: 10100, sourceAt: 10100 }
   await scheduler.sync([original], 10000)
   await scheduler.sync([original], 10000)
@@ -110,6 +115,59 @@ it('selects the scheduler without requesting permissions and reconciles Android 
   await scheduler.sync([], 10000)
   expect(pending.size).toBe(0)
   expect(request).not.toHaveBeenCalled()
+  await scheduler.sync([{ ...original, at: 9999 }], 10000)
+  expect(pending.size).toBe(0)
+  expect(Number.isInteger(id) && id > 0 && id <= 2147483647).toBe(true)
+})
+
+it('reconciles even when there is no Budget subscription', async () => {
+  const results = vi.fn()
+  const sync = vi.fn<(rows: { title: string }[]) => Promise<void>>().mockResolvedValue(undefined)
+  const stop = startReminders(results, {
+    platform: 'android',
+    status: async () => ({ notifications: 'granted', exact: 'granted' }),
+    requestNotifications: vi.fn(), requestExact: vi.fn(), openSystemSettings: vi.fn(), sync,
+  })
+  const queued = async (titles: string[]) => vi.waitFor(() => expect(sync.mock.lastCall?.[0].map(row => row.title)).toEqual(titles))
+  const draft = { ...emptyTask(addDays(localDate(), 1)), title: 'Original', reminders: [0] as [0] }
+  try {
+    await queued([])
+    await saveTask(draft, 0)
+    await queued(['Original'])
+    const [group] = await readGroups()
+    const { id } = group.task
+    await saveTask({ ...draft, title: 'Edited' }, 0, id)
+    await queued(['Edited'])
+    await changeCompletion(id, undefined, true)
+    await queued([])
+    await changeCompletion(id, undefined, false)
+    await queued(['Edited'])
+    await deleteTask(id)
+    await queued([])
+    await restoreTask(id)
+    await queued(['Edited'])
+  } finally {
+    stop()
+  }
+})
+
+it('leaves checking after three seconds and supports retry after timeout or error', async () => {
+  vi.useFakeTimers()
+  try {
+    const pending = checkAccess(() => new Promise(() => {}))
+    await vi.advanceTimersByTimeAsync(3000)
+    await expect(pending).resolves.toBe('unknown')
+    await expect(checkAccess(async () => { throw new Error('Bridge failure') })).resolves.toBe('error')
+    await expect(checkAccess(async () => 'granted')).resolves.toBe('granted')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('opens app details when a requested settings screen fails', async () => {
+  const bridge = { open: vi.fn().mockRejectedValueOnce(new Error('Screen unavailable')).mockResolvedValueOnce(undefined), info: vi.fn() }
+  await openDeviceSettings('autostart', bridge)
+  expect(bridge.open.mock.calls).toEqual([[{ screen: 'autostart' }], [{ screen: 'app' }]])
 })
 
 it('gates the reminder queue by module while leaving task reminders and stored bills intact', () => {

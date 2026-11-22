@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, expect, it, vi } from 'vitest'
+import type { ReminderStatus } from '../reminders/schedulers'
 import { Home } from './Home'
 import { dailyQuote, greeting, openPlan, relativeTime } from './model'
 import { emptyTask } from '../tasks/input'
@@ -15,12 +16,13 @@ const fixture = vi.hoisted(() => ({
   flags: { home: true, tasks: true, calendar: false, budget: false, dayTheme: false },
   rows: [] as TaskRow[],
   check: vi.fn(),
+  reminderStatus: { notifications: 'denied', exact: 'granted' } as ReminderStatus,
   now: new Date(2026, 10, 22, 8, 50),
 }))
 vi.mock('../../app/features', () => ({ features: fixture.flags }))
 vi.mock('../../app/useMinuteClock', () => ({ useMinuteClock: () => fixture.now }))
 vi.mock('../../shared/theme/ThemeProvider', () => ({ useTheme: () => ({ preferences: { yourName: 'Cha', weekStart: 1 } }) }))
-vi.mock('../reminders/useReminders', () => ({ useReminders: () => ({ status: { notifications: 'denied' } }) }))
+vi.mock('../reminders/useReminders', () => ({ useReminders: () => ({ status: fixture.reminderStatus, platform: 'android' }) }))
 vi.mock('../tasks/useTasks', () => ({ useTaskActions: () => ({ check: fixture.check, busy: false }) }))
 vi.mock('../calendar/useCalendarData', () => ({ useCalendarData: () => ({
   groups: [], days: new Map([['2026-11-22', {
@@ -45,13 +47,14 @@ function row(title: string, patch: Partial<TaskInput> = {}): TaskRow {
   return { value, group }
 }
 
-afterEach(() => { cleanup(); fixture.flags.budget = false; fixture.rows = []; localStorage.clear(); fixture.check.mockClear() })
+afterEach(() => { cleanup(); fixture.flags.budget = false; fixture.rows = []; fixture.reminderStatus = { notifications: 'denied', exact: 'granted' }; localStorage.clear(); fixture.check.mockClear() })
 const renderHome = (overdue = 0) => render(<MemoryRouter><Home overdue={overdue} /></MemoryRouter>)
 
 it('keeps a quote stable for a date, uses local greeting ranges, and reports relative time', () => {
-  expect(greeting(11)).toBe('Good morning')
-  expect(greeting(12)).toBe('Good afternoon')
-  expect(greeting(18)).toBe('Good evening')
+  for (const [hours, label] of [
+    [[0, 4], 'Up late'], [[5, 11], 'Good morning'], [[12, 16], 'Good afternoon'],
+    [[17, 20], 'Good evening'], [[21, 23], 'Good night'],
+  ] as const) for (const hour of hours) expect(greeting(hour)).toBe(label)
   expect(dailyQuote('2026-12-31')).toBe(dailyQuote('2026-12-31'))
   expect(dailyQuote('2026-12-31')).not.toBe(dailyQuote('2027-01-01'))
   expect(relativeTime('11:00', fixture.now)).toBe('in 2h 10m')
@@ -85,6 +88,17 @@ it('renders the short plan, progress, reminder health, and the overdue and Show 
   expect(screen.getByRole('link', { name: /Reminders are off/ })).toHaveAttribute('href', '/more/reminders')
   fireEvent.click(screen.getByRole('checkbox', { name: 'Complete First' }))
   expect(fixture.check).toHaveBeenCalledWith(fixture.rows[0].group.task.id, undefined, true)
+})
+
+it.each([
+  ['granted', 'denied', 'Exact alarms are off'],
+  ['error', 'granted', 'Could not check reminders'],
+  ['granted', 'unknown', 'Reminder status is unknown'],
+  ['unavailable', 'unavailable', 'Reminders are unavailable'],
+] as const)('links to reminder settings for %s notifications and %s alarms', (notifications, exact, label) => {
+  fixture.reminderStatus = { notifications, exact }
+  renderHome()
+  expect(screen.getByRole('link', { name: label + ' – Fix' })).toHaveAttribute('href', '/more/reminders')
 })
 
 it('shows empty and completed states and uses one tap to open the task form', () => {

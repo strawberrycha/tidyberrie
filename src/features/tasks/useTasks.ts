@@ -36,7 +36,12 @@ export function useTaskActions() {
       perform(async () => {
         const undo = await saveTask(value, weekStart, id, date)
         return id ? undo : undefined
-      }, id ? 'Task updated.' : 'Task added.', after),
+      }, id ? 'Task updated.' : 'Task added.', () => {
+        after()
+        if (value.reminders.length || value.subtasks.some(item => item.reminder !== undefined)) {
+          window.dispatchEvent(new Event('tidyberrie-reminder-explain'))
+        }
+      }),
     check: (id: string, date: string | undefined, done: boolean, subtaskId?: string) =>
       perform(() => changeCompletion(id, date, done, subtaskId),
         subtaskId ? (done ? 'Subtask checked.' : 'Subtask unchecked.') : done ? 'Task completed.' : 'Task reopened.'),

@@ -2,7 +2,7 @@ import { useContext, useState } from 'react'
 import { reminderView } from './ReminderProvider'
 import { useToast } from '../../shared/ui/Toast'
 import {
-  dismissReminder, openSystemSettings, reminderPlatform, requestExact, requestNotifications, scheduleTest,
+  dismissReminder, markReminderDone, openSystemSettings, reminderPlatform, requestExact, requestNotifications, scheduleTest,
   setReminderLimit, snoozeReminder,
 } from './service'
 
@@ -32,9 +32,12 @@ export function useReminders() {
     notifications: () => perform(requestNotifications),
     exact: () => perform(requestExact),
     settings: () => perform(openSystemSettings),
-    test: () => perform(scheduleTest, 'Test reminder set for one minute from now.'),
+    test: (seconds: number) => perform(() => scheduleTest(seconds), 'Test reminder queued.'),
+    refresh: () => window.dispatchEvent(new Event('tidyberrie-reminder-refresh')),
+    reschedule: () => window.dispatchEvent(new Event('tidyberrie-reminder-reschedule')),
     changeLimit: (value: number) => perform(() => setReminderLimit(value), 'Reminder limit saved.'),
     snooze: (item: Reminder, choice: string) => perform(() => snoozeReminder(item, choice), 'Reminder snoozed.'),
+    done: (item: Reminder) => perform(async () => markReminderDone(item), 'Marked done.'),
     dismiss: (item: Reminder) => perform(() => dismissReminder(item), 'Reminder dismissed.'),
   }
 }

@@ -156,7 +156,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         </div>}
       </>}
     {!trash && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
-    {dialog?.kind === 'edit' && <TaskForm initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date}
+    {dialog?.kind === 'edit' && <TaskForm initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date} editing={!!dialog.editor.id}
       busy={actions.busy} close={close} save={value => save(dialog.editor, value)} />}
     {(dialog?.kind === 'edit-scope' || dialog?.kind === 'delete-scope') && (() => {
       const editing = dialog.kind === 'edit-scope'

@@ -63,6 +63,12 @@
 .task-dialog .task-form > .secondary { justify-self: start; }
 .subtask-edit { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 130px); align-items: end; gap: 8px; }
 .subtask-edit .task-actions { grid-column: 1 / -1; }
+.task-field-label { font-size: 1rem; font-weight: 700; }
+.task-date-chips { display: flex; gap: var(--space-2); overflow-x: auto; }
+.task-date-chips button.secondary { min-height: var(--touch); padding-block: 0; flex: none; background: transparent; border-color: transparent; }
+.task-date-chips button span { display: grid; place-items: center; min-height: 40px; padding-inline: var(--space-2); border-radius: var(--pill); background: var(--surface); }
+.task-date-chips button[aria-pressed="true"] span { background: var(--soft); color: var(--primary); outline: 1px solid currentColor; outline-offset: -1px; }
+
 :root {
   --task-rose: var(--accent-1); --task-blush: var(--accent-2); --task-peach: var(--soft); --task-berry: var(--accent-3);
   --task-lavender: #d9c7f0; --task-mint: #a8cdb4; --task-honey: #e8c9a0; --task-sky: #b4d4ed;

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlarmClock, Check, ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper } from 'lucide-react'
+import { AlarmClock, Check, ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper, Moon, Sun, Sunset } from 'lucide-react'
 import { features } from '../../app/features'
 import { moreRoute } from '../../app/navigation'
 import { useMinuteClock } from '../../app/useMinuteClock'
@@ -45,15 +45,20 @@ function HomeWithBudget(props: HomeProps) {
 
 function HomePlan({ now, today, selected, overdue, select, budget }: HomeProps & { budget?: BudgetState }) {
   const { preferences } = useTheme()
-  const { status } = useReminders()
+  const { status, platform } = useReminders()
   const [retry, setRetry] = useState(0)
+  const problem = status?.notifications === 'denied' ? 'Reminders are off'
+    : status?.exact === 'denied' ? 'Exact alarms are off'
+    : [status?.notifications, status?.exact].includes('error') ? 'Could not check reminders'
+    : [status?.notifications, status?.exact].includes('unknown') ? 'Reminder status is unknown'
+    : platform === 'android' && status?.notifications === 'unavailable' ? 'Reminders are unavailable'
+    : undefined
   return <div className="home-view">
     <header className="home-top">
       <h1><img src="/icon-192.png" alt="" width="32" height="32" />Tidyberrie</h1>
       <time dateTime={now.toISOString()}>{new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h' }).format(now)}</time>
     </header>
-    {(status?.notifications === 'denied' || status?.exact === 'denied' || status?.exact === 'prompt') &&
-      <Link className="home-reminder" to={moreRoute('reminders')}><CircleAlert size={18} aria-hidden />Reminders are off – Fix</Link>}
+    {problem && <Link className="home-reminder" to={moreRoute('reminders')}><CircleAlert size={18} aria-hidden />{problem} – Fix</Link>}
     <HomeContent key={retry} now={now} today={today} selected={selected} select={select} overdue={overdue}
       budget={budget} retry={() => setRetry(count => count + 1)} />
   </div>
@@ -80,13 +85,15 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
   const close = () => setDialog(undefined)
   const month = dateLabel(selected, { month: 'long', year: 'numeric' })
   const allDone = day.rows.length > 0 && !open.length
+  const hour = now.getHours()
+  const GreetingIcon = hour < 5 || hour >= 21 ? Moon : hour >= 17 ? Sunset : Sun
   const openBill = (id: string) => setDialog({ kind: 'expenses', id })
   const openQuick = () => setDialog(features.budget ? 'quick' : 'task')
   return <>
     <section className="home-card home-greeting">
       <Avatar mood={currentDay.rows.length > 0 && currentDay.done === currentDay.rows.length ? 'all' : overdue >= 3 ? 'overdue' : 'none'}
-        evening={now.getHours() >= 21 || now.getHours() < 6} />
-      <div className="greeting-copy"><h2>{greeting(now.getHours())}, {preferences?.yourName ?? 'Cha'}!</h2>
+        evening={hour >= 21 || hour < 5} />
+      <div className="greeting-copy"><h2><GreetingIcon size={20} aria-hidden /> {greeting(hour)}, {preferences?.yourName ?? 'Cha'}{hour < 5 ? '?' : '!'}</h2>
         <p className="home-quote">{dailyQuote(today)}</p><time dateTime={today}>{dateLabel(today, { ...brief, weekday: 'long' })}</time>
       </div>
     </section>
@@ -167,7 +174,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     </section>}
 
     <PlannerAddButton open={openQuick} label={features.budget ? 'Quick add' : 'Add task'} />
-    {dialog === 'task' && <QuickAdd draft={{ date: selected }} close={close} />}
+    {dialog === 'task' && <QuickAdd draft={{ date: selected < today ? today : selected }} close={close} />}
     {dialog === 'quick' && <TaskDialog title="Quick add" close={close}>
       <div className="home-quick-actions">
         <button className="primary" onClick={() => setDialog('task')}>New task</button>
@@ -177,7 +184,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     </TaskDialog>}
     {typeof dialog === 'object' && 'group' in dialog && <TaskForm
       initial={dialog.occurrence ? { ...dialog.value, repeat: defaultRepeat } : dialog.value}
-      title="Task details" occurrence={!!dialog.occurrence} busy={actions.busy} close={close}
+      title="Task details" editing occurrence={!!dialog.occurrence} busy={actions.busy} close={close}
       save={value => void actions.save(value, preferences?.weekStart ?? 0, dialog.group.task.id, dialog.occurrence, close)} />}
     {typeof dialog === 'object' && 'kind' in dialog && budget && <BudgetQuickEditor selection={dialog} data={budget.data} today={selected} close={close} />}
   </>

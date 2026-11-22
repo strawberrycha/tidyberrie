@@ -1,7 +1,11 @@
 import type { TaskRow } from '../tasks/model'
 
 export function greeting(hour: number) {
-  return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  if (hour < 5) return 'Up late'
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  if (hour < 21) return 'Good evening'
+  return 'Good night'
 }
 
 const quotes = [

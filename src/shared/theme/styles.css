@@ -48,6 +48,7 @@
   --shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
 }
 
+html { background: var(--bg); }
 body { margin: 0; min-width: 0; background: var(--bg); color: var(--text); font: 400 1rem/1.5 Nunito, sans-serif; }
 h1, h2 { line-height: 1.2; font-weight: 800; }
 h1 { font-size: 2rem; margin-bottom: 24px; }

@@ -18,7 +18,7 @@ beforeAll(() => {
     Object.defineProperty(HTMLDialogElement.prototype, name, { value: method, configurable: true })
   }
 })
-afterEach(cleanup)
+afterEach(() => { cleanup(); vi.useRealTimers() })
 afterAll(() => {
   for (const [name, descriptor] of Object.entries(original)) {
     if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, name, descriptor)
@@ -26,18 +26,35 @@ afterAll(() => {
   }
 })
 
+it('offers local quick dates across a year boundary and rejects typed past dates', () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 11, 31, 12))
+  render(<TaskForm initial={emptyTask('2026-12-31')} title="Add task" busy={false} save={vi.fn()} close={vi.fn()} />)
+  const field = screen.getByLabelText('Date')
+  expect(field).toHaveAttribute('min', '2026-12-31')
+  expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
+  expect(field).toHaveValue('2027-01-01')
+  fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
+  expect(field).toHaveValue('2027-01-07')
+  fireEvent.change(field, { target: { value: '2026-12-30' } })
+  expect(screen.getByText('Pick today or a later date.')).toBeVisible()
+})
+
 it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Escape', async () => {
   const save = vi.fn()
   const close = vi.fn()
   const confirmDiscard = vi.spyOn(window, 'confirm').mockReturnValue(true)
-  render(<TaskForm initial={initial} title="Add task" busy={false} save={save} close={close} />)
+  render(<TaskForm initial={emptyTask('2099-11-22')} title="Add task" busy={false} save={save} close={close} />)
   const title = screen.getByRole('textbox', { name: 'Title' })
   expect(title).toHaveFocus()
   fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
   expect(await screen.findByText('Enter a title.')).toBeVisible()
   expect(save).not.toHaveBeenCalled()
   fireEvent.change(title, { target: { value: 'Read' } })
+  expect(screen.queryByLabelText('Complete automatically when all subtasks are checked')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Add subtask' }))
+  expect(screen.getByLabelText('Complete automatically when all subtasks are checked')).toBeVisible()
   const first = screen.getByRole('textbox', { name: 'Subtask 1' })
   fireEvent.change(first, { target: { value: 'Pick a book' } })
   fireEvent.keyDown(first, { key: 'Enter' })
