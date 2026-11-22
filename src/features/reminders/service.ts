@@ -1,3 +1,4 @@
+import { features } from '../../app/features'
 import { z } from '../../shared/db/strictValidation'
 import { watchTasks } from '../tasks/service'
 import type { TaskGroup } from '../tasks/model'
@@ -43,11 +44,16 @@ export type ReminderState = { status?: ReminderStatus; due: Reminder[]; limit: n
 
 type BudgetSnapshot = Parameters<Parameters<typeof watchBudget>[0]>[0]
 
-function stateFor(groups: TaskGroup[], records: DeviceRecord[], budget: BudgetSnapshot, now: number) {
+export function moduleReminders(flags: Pick<typeof features, 'tasks' | 'budget'>, groups: TaskGroup[], budget: BudgetSnapshot | undefined, from: number, through: number) {
+  const rows = flags.tasks ? reminderWindow(groups, from, through, Infinity) : []
+  if (flags.budget && budget) rows.push(...budgetDueWindow(budget, from, through))
+  return rows
+}
+
+function stateFor(groups: TaskGroup[], records: DeviceRecord[], budget: BudgetSnapshot | undefined, now: number) {
   const limit = limitSchema.safeParse(records.find(record => record.key === 'limit')?.value).data ?? defaultLimit
   const test = records.find(record => record.key === 'test')
-  const reminders = reminderWindow(groups, now - retention - day, now + retention, Infinity)
-  reminders.push(...budgetDueWindow(budget, now - retention - day, now + retention))
+  const reminders = moduleReminders(features, groups, budget, now - retention - day, now + retention)
   if (test && test.value >= now - retention) {
     reminders.push({ key: testKey, title: 'This is your Tidyberrie test reminder.', at: test.value, sourceAt: test.sourceAt })
   }
@@ -72,7 +78,7 @@ export function startReminders(publish: (state: ReminderState) => void) {
   }
 
   function refresh() {
-    if (!groups || !records || !budget || stopped || queued) return
+    if (!groups || !records || (features.budget && !budget) || stopped || queued) return
     queued = true
     scheduleWork = scheduleWork.then(async () => {
       queued = false
@@ -98,18 +104,19 @@ export function startReminders(publish: (state: ReminderState) => void) {
     }).catch(reportError)
   }
 
-  const stopTasks = watchTasks(false, values => { groups = values; refresh() }, reportError)
+  const stopTasks = features.tasks ? watchTasks(false, values => { groups = values; refresh() }, reportError) : undefined
+  if (!features.tasks) groups = []
   const stopRecords = repository.observeRecords(values => { records = values; refresh() }, reportError)
-  const stopBudget = watchBudget(value => { budget = value; refresh() }, reportError)
+  const stopBudget = features.budget ? watchBudget(value => { budget = value; refresh() }, reportError) : undefined
   const interval = window.setInterval(refresh, 15_000)
   document.addEventListener('visibilitychange', refresh)
   window.addEventListener('focus', refresh)
   window.addEventListener('tidyberrie-reminder-refresh', refresh)
   return () => {
     stopped = true
-    stopTasks()
+    stopTasks?.()
     stopRecords()
-    stopBudget()
+    stopBudget?.()
     window.clearInterval(interval)
     document.removeEventListener('visibilitychange', refresh)
     window.removeEventListener('focus', refresh)

@@ -6,12 +6,12 @@ import { deleteDayTheme, saveDayTheme, setThemeAssignment, watchDayThemes } from
 
 const empty: DayThemeRecord[] = []
 
-export function useDayThemes() {
+export function useDayThemes(enabled = true) {
   const [state, setState] = useState<{ records?: DayThemeRecord[]; error?: boolean }>()
   const records = state?.records ?? empty
   const index = useMemo(() => themeIndex(records), [records])
   const catalog = useMemo(() => choices(records), [records])
-  useEffect(() => watchDayThemes(records => setState({ records }), () => setState({ error: true })), [])
+  useEffect(() => enabled ? watchDayThemes(records => setState({ records }), () => setState({ error: true })) : undefined, [enabled])
   return { records, index, catalog, ready: !!state?.records, error: state?.error }
 }
 

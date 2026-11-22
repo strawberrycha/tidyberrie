@@ -5,6 +5,7 @@ import type { TaskInput } from '../tasks/input'
 import { storedTask } from '../tasks/model'
 import type { TaskGroup } from '../tasks/model'
 import { defaultRepeat } from '../tasks/recurrence'
+import { moduleReminders } from './service'
 import { AndroidLocalNotificationScheduler, selectScheduler } from './schedulers'
 import { applyDispositions, minute, notificationId, reminderWindow, snoozeTime } from './window'
 
@@ -109,4 +110,16 @@ it('selects the scheduler without requesting permissions and reconciles Android 
   await scheduler.sync([], 10000)
   expect(pending.size).toBe(0)
   expect(request).not.toHaveBeenCalled()
+})
+
+it('gates the reminder queue by module while leaving task reminders and stored bills intact', () => {
+  const bill = { ...stamp(), date: '2026-12-01', amount: 200, category: 'Power', recurrenceRule: null,
+    accountId: crypto.randomUUID(), status: 'planned' as const, billReminder: 0 as const }
+  const budget = { accounts: [], incomes: [], expenses: [bill], transfers: [], debts: [], categoryBudgets: [], goals: [], preferences: undefined }
+  const start = at('2026-12-01T00:00')
+  const finish = at('2026-12-02T00:00')
+  const groups = [task({ reminders: [0] })]
+  expect(moduleReminders({ tasks: true, budget: false }, groups, budget, start, finish).map(item => item.title)).toEqual(['Read'])
+  expect(moduleReminders({ tasks: true, budget: true }, groups, budget, start, finish).map(item => item.title)).toEqual(['Read', 'Bill due · Power'])
+  expect(budget.expenses).toEqual([bill])
 })

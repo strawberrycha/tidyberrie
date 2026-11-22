@@ -1,3 +1,4 @@
+import { features } from '../../app/features'
 import { useState } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
@@ -45,7 +46,7 @@ function DayTimeline({ day, now, today, quick }: {
               <span>Now {localTime(now)}</span>
             </div>}
             {rows.length ? <PlannerTaskList rows={rows} now={now} />
-              : <button type="button" className="planner-slot" aria-label={'Add task at ' + time} onClick={() => quick(time)}>+</button>}
+              : features.tasks && <button type="button" className="planner-slot" aria-label={'Add task at ' + time} onClick={() => quick(time)}>+</button>}
           </div>
         </li>
       })}
@@ -62,12 +63,12 @@ export function Calendar() {
   const [changeTheme, setChangeTheme] = useState(false)
   const [draft, setDraft] = useState<QuickDraft>()
   const { preferences } = useTheme()
-  const themes = useDayThemes()
+  const themes = useDayThemes(features.dayTheme)
   const actions = useDayThemeActions()
   const anchor = selected ?? today
   const window = visibleWindow(view, anchor, preferences?.weekStart ?? 1)
   const data = useCalendarData(window)
-  const themeFor = (date: string) => resolveDayTheme(themes.index, date, weekdayOf(date))
+  const themeFor = (date: string) => features.dayTheme ? resolveDayTheme(themes.index, date, weekdayOf(date)) : undefined
   const heading = view === 'Month' ? dateLabel(anchor, { month: 'long', year: 'numeric' })
     : view === 'Day' ? dateLabel(anchor)
       : dateLabel(window.from, { month: 'short', day: 'numeric' }) + ' – ' + dateLabel(window.through, { month: 'short', day: 'numeric', year: 'numeric' })
@@ -91,7 +92,7 @@ export function Calendar() {
       </div>
     </div>
     {data.error && <p role="alert">Could not load calendar tasks.</p>}
-    {themes.error && <p role="alert">Could not load Day Themes.</p>}
+    {features.dayTheme && themes.error && <p role="alert">Could not load Day Themes.</p>}
     {data.loading && <p role="status">Loading calendar tasks…</p>}
     {(view === 'Month' || view === 'Week') && <MonthGrid window={window} anchor={anchor} today={today}
       days={data.days} themeFor={themeFor} move={select} open={open} week={view === 'Week'} />}
@@ -108,16 +109,16 @@ export function Calendar() {
         {day.rows.length > 0 && <PlannerTaskList rows={day.rows} now={now} />}
       </li>
     })}</ol>}
-    <PlannerAddButton open={() => setDraft({ date: anchor })} />
+    {features.tasks && <PlannerAddButton open={() => setDraft({ date: anchor })} />}
     {activeDay && <TaskDialog title={dateLabel(activeDay)} side close={() => setActiveDay(undefined)}>
       <div className="planner-day-panel">
-        <DayThemeBadge theme={themeFor(activeDay)} />
+        {features.dayTheme && <DayThemeBadge theme={themeFor(activeDay)} />}
         <div className="task-actions">
-          <button type="button" className="secondary" aria-expanded={changeTheme}
-            disabled={!themes.ready} onClick={() => setChangeTheme(!changeTheme)}>Change Day Theme</button>
-          <button type="button" className="primary" data-first-field onClick={() => setDraft({ date: activeDay })}>Quick add task</button>
+          {features.dayTheme &&           <button type="button" className="secondary" aria-expanded={changeTheme}
+            disabled={!themes.ready} onClick={() => setChangeTheme(!changeTheme)}>Change Day Theme</button>}
+          {features.tasks && <button type="button" className="primary" data-first-field onClick={() => setDraft({ date: activeDay })}>Quick add task</button>}
         </div>
-        {changeTheme && <label className="planner-theme-select">
+        {features.dayTheme && changeTheme && <label className="planner-theme-select">
           Theme for this date<select value={assignmentValue(themes.index.dated.get(activeDay))} disabled={actions.busy}
             onChange={event => void actions.assign({ date: activeDay }, event.target.value)}>
             <ThemeOptions catalog={themes.catalog} fallback="Use weekday default" current={themes.index.dated.get(activeDay)} />
@@ -127,6 +128,6 @@ export function Calendar() {
         <PlannerTaskList key={activeDay} rows={(data.days.get(activeDay) ?? emptyDay).rows} now={now} />
       </div>
     </TaskDialog>}
-    {draft && <QuickAdd draft={draft} close={() => setDraft(undefined)} />}
+    {features.tasks && draft && <QuickAdd draft={draft} close={() => setDraft(undefined)} />}
   </div>
 }

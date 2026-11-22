@@ -1,3 +1,4 @@
+import { features } from '../../app/features'
 import { useEffect, useState } from 'react'
 import { Database, Palette } from 'lucide-react'
 import { Link } from 'react-router-dom'
@@ -53,14 +54,14 @@ export function Settings() {
     </section>
     <BackupSettings />
     <LockSettings />
-    <DayThemeSettings />
+    {features.dayTheme && <DayThemeSettings />}
     <section className="settings-card wide">
       <h2>Reminders</h2>
       <Link className="secondary settings-link" to="/settings/reminders">Open reminder settings</Link>
     </section>
-    <section className="settings-card wide">
+    {features.tasks && <section className="settings-card wide">
       <h2>Task Trash</h2>
       <Link className="secondary settings-link" to="/tasks?trash">Open task Trash</Link>
-    </section>
+    </section>}
   </div>
 }

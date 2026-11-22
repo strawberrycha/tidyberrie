@@ -33,7 +33,7 @@ test('completes a single repeat and restores the series from Trash', async ({ pa
 })
 
 test('calculates Budget cards from an account, income, and an expense', async ({ page }) => {
-  await page.goto('/budget')
+  await page.goto('http://127.0.0.1:4189/budget')
   await page.getByRole('button', { name: /^monthly$/i }).click()
   const add = async (kind: string) => {
     await page.getByRole('button', { name: 'Add budget record' }).click()
@@ -106,8 +106,6 @@ test('Axe and 200% text scaling across screens in both themes', async ({ page })
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/budget')
-  await page.getByRole('button', { name: /^monthly$/i }).click()
-  await page.getByRole('heading', { name: 'Accounts', exact: true }).waitFor()
   await page.goto('/settings')
   for (const theme of ['strawberry', 'sakura']) {
     await page.getByLabel('Theme', { exact: true }).selectOption(theme)
@@ -179,4 +177,45 @@ test('restores a daily snapshot and recovers from the safety snapshot', async ({
   await expect(page.getByText('Snapshot restored. The previous data is in the safety snapshot.')).toBeVisible()
   await page.getByRole('link', { name: 'Tasks', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Water the plants' })).toBeVisible()
+})
+
+test('keeps hidden-module records when restoring the Calendar, Budget and Day Theme entry points', async ({ page }) => {
+  test.setTimeout(60_000)
+  const enabledOrigin = 'http://127.0.0.1:4189'
+  let enabled = true
+  await page.route('**/src/app/features.ts*', route => enabled ? route.continue() : route.fulfill({
+    contentType: 'text/javascript',
+    body: 'export const features = { tasks: true, home: true, calendar: false, budget: false, dayTheme: false }',
+  }))
+
+  await page.goto(enabledOrigin + '/settings')
+  await expect(page.getByRole('heading', { name: 'Day Themes' })).toBeVisible({ timeout: 15_000 })
+  await page.getByRole('button', { name: 'Add custom theme' }).click()
+  await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Preserved theme')
+  await page.getByRole('button', { name: 'Save theme' }).click()
+  await expect(page.getByRole('listitem').getByText('Preserved theme', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Calendar', exact: true }).click()
+  await expect(page.getByRole('grid', { name: 'Month calendar' })).toBeVisible()
+  await page.getByRole('gridcell').first().getByRole('button').click()
+  await expect(page.getByRole('button', { name: 'Change Day Theme' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Quick add task' })).toBeVisible()
+  await page.goto(enabledOrigin + '/')
+  await expect(page.getByRole('heading', { name: 'Budget', exact: true })).toBeVisible()
+
+  enabled = false
+  await page.goto(enabledOrigin + '/')
+  await expect(page.getByRole('heading', { name: 'Budget', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add task' })).toBeVisible()
+  await page.getByRole('link', { name: 'Calendar', exact: true }).click()
+  await expect(page.getByText('Calendar is coming soon.')).toBeVisible()
+  await expect(page.getByRole('main').getByRole('button')).toHaveCount(0)
+  await page.goto(enabledOrigin + '/budget/extras')
+  await expect(page).toHaveURL(/\/budget$/)
+  await expect(page.getByText('Budget is coming soon.')).toBeVisible()
+  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Day Themes' })).toHaveCount(0)
+  enabled = true
+
+  await page.goto(enabledOrigin + '/settings')
+  await expect(page.getByRole('listitem').getByText('Preserved theme', { exact: true })).toBeVisible()
 })
