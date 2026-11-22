@@ -185,3 +185,19 @@ Lint, strict typecheck, all 61 tests, and the production build passed. Headless 
 4. Enable a reminder on a planned bill or open utang, with a due date falling in the Phase 4 reminder window. Check **Settings → Reminders**. Pay one recurring bill occurrence and check that the other occurrences still have reminders.
 5. Preview a purchase and close the dialog. The saved budget and history should retain their original values. Open **Monthly summary** and compare the chart with the tables. Export transactions and check the CSV’s amount column is in centavos.
 6. For offline verification, run `npm run build` and `npm run preview -- --port 4173 --strictPort`. After the service worker activates, disable the network, reload Budget extras and Monthly summary, and check your saved records and charts.
+
+### Phase 6 manual checks
+
+Use a fresh browser profile with sample data. Run `npm run build` and `npm run preview` for the production CSP and offline cache. To run the browser suite, install Playwright Chromium with `npx playwright install chromium` or set `TIDY_CHROME_PATH` to a local Chrome executable, then run `npm run test:e2e`.
+
+1. Create a repeated task with a subtask. Complete today’s occurrence, move the series to Trash, and restore it. Switch between Strawberry Milk and Sakura Night. Try tabbing through Settings and using the Calendar arrow keys.
+2. Open Settings → Backups and export JSON and CSV. Try importing a corrupt JSON file and verify the current data remains intact. Select the valid backup, check preview counts, then try Merge and Replace. Replace requires `REPLACE`.
+3. Create a record after a daily snapshot. Restore the daily snapshot and verify the record disappears. Restore the safety snapshot and verify the record returns.
+4. Export encrypted JSON with a test passphrase. Try a wrong passphrase, then the correct one. Check that valid input shows a preview before any writes occur.
+5. Enable App Lock, select “Any time away”, then switch tabs and return. Reload, enter three wrong PINs to check throttling, wait for the displayed retry delay, then unlock with the correct PIN.
+6. After the PWA is ready, go offline and reload. Verify theme and tasks persist. On a supported browser try Install Tidyberrie. On Android, also verify the PIN gate after switching away and reopening the wrapper.
+7. At 200% text size, inspect labels and buttons across screens. With reduced motion enabled, complete a task and verify there is no animation. In the test profile only, choose Delete all data, use the export option first, and type `DELETE` to verify that app records and snapshots clear.
+
+**Automated results.** Lint, typecheck, production build, 65 unit tests, and seven Playwright tests passed. Axe WCAG A/AA checks and 200% text reflow passed on Home, Calendar, Tasks, Budget, Budget extras, Monthly summary, Settings, and Reminders in both active themes. The browser suite checked manifest metadata and offline reload with a restored backup.
+
+Lighthouse 13.6.0 on the production Home route measured Performance/Accessibility/Best Practices of 100/100/100 on desktop and 95/100/100 on the standalone mobile rerun. The run immediately after the Playwright suite scored 61/100/100 on mobile. Lighthouse has no PWA category in this version. The manual script covers Android resume and the operating system install prompt.

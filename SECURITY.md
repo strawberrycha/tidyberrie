@@ -1,0 +1,12 @@
+# Security
+
+Tidyberrie is a local-first app. IndexedDB holds planner, financial, and recovery data. Service worker caches contain static application resources within the app's origin and root scope. The generated Workbox worker precaches build assets and serves the app shell for navigation. It has no runtime data/API cache. Deploy the app on a dedicated origin and send the same CSP as the preview server, including its HTTP-only frame restriction.
+
+## Threats and controls
+
+- **Untrusted imports.** JSON is size-capped and parsed against strict Zod schemas, with a read-only preview. Merge and replacement are transactional. Replacement and snapshot restoration preserve a device-only safety copy for recovery. The delete command requires typing DELETE and clears records and recovery copies.
+- **Backup disclosure.** Plain JSON and CSV contain personal data. Encrypted JSON uses Web Crypto AES-256-GCM with 600,000 PBKDF2-SHA-256 iterations, a random 128-bit salt, a random 96-bit nonce, and authenticated version context. Passphrases are used in memory only. Keep the passphrase and backup file separately.
+- **Casual access.** PIN verification uses a separately salted PBKDF2-SHA-256 verifier with 600,000 iterations and persistent exponential retry delays. The PIN gate does not encrypt device storage. Someone with browser tooling or access to the browser profile can bypass the gate. Use device-level protection.
+- **Script and spreadsheet injection.** Production enforces an external same-origin script/style policy, blocks objects and base URL changes, and limits other fetches to the same origin. Preview also denies framing by header. Zod runs without JIT or eval. User data is rendered as React text. Source inspection found no raw HTML rendering or console logging of application data. CSV quotes all cells, escapes quotes, and prefixes an apostrophe before possible spreadsheet formula input.
+- **Repository exposure.** The tracked-file scan reports only paths and line numbers. It checks common provider token and private-key patterns. It does not inspect commit history or arbitrary secret formats. Keep backups and signing material out of Git.
+- **Dependencies.** npm audit reported four moderate findings across the development-only vite-plugin-pwa → workbox-build → glob → minimatch chain. The production-only audit reported zero. The npm suggestion rolls the plugin back across a major version; the current build keeps the known-working PWA stack. These glob dependencies run at build time against fixed project-owned paths.

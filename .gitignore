@@ -14,3 +14,6 @@ playwright/.cache/
 test-results/
 blob-report/
 /design-source/
+
+playwright-report/
+test-results/
