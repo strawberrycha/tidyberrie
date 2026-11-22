@@ -74,3 +74,17 @@ The Phase 1 run passed lint, typecheck, all seven Vitest tests, and the producti
 `npm audit` reported four moderate findings through `vite-plugin-pwa → workbox-build → glob/minimatch`. npm proposes a breaking downgrade with `npm audit fix --force`. The pinned toolchain was retained. `npm audit --omit=dev --offline` reported zero production dependency findings.
 
 Backups are unencrypted JSON in Phase 1. An export above the 10 MiB import limit cannot be reimported in this phase. Local snapshots share the browser's storage with live data and are captured once per local day while the app is open. Real Android and laptop installation checks remain manual.
+
+## Phase 2 tasks
+
+The Tasks route now provides task and subtask CRUD, repeat rules and occurrence exceptions, six smart lists, filters, sorting, Undo, and Trash. Settings links to Task Trash and lets you choose the week start. Dexie upgrades in place to v2 while preserving v1 records. Reminder choices are stored for Phase 4.
+
+Lint, strict typecheck, all 28 tests, and the production build passed. The 12 recurrence tests also passed in `America/Los_Angeles`. Headless Chrome verified the mobile sheet and validation, task creation and editing, an occurrence-only edit, completion and reopening, Undo, Trash restore, reload persistence, and creation with the network disabled. The production bundle excludes the development seed.
+
+### Manual test
+
+1. Run `npm ci` and `npm run dev`, then open `http://localhost:5173/tasks`. Select the floating **Add task** button. Submit with an empty title to see validation. Press Escape to close, then reopen and check that Title has focus.
+2. Create a task for today with two subtasks. Press Enter in the first subtask to add the second, reorder them with the arrow buttons, and enable auto-completion. Expand the saved card, check both items, then reopen the task by unchecking one in Completed.
+3. Create a daily repeat. Complete today's occurrence and check that tomorrow's card in Upcoming has unchecked subtasks. Edit tomorrow with **This occurrence only** and move it forward a day. Use **All occurrences** to edit the series title in a separate repeat.
+4. Delete a task, choose Undo, and delete it again. In **Settings → Task Trash**, confirm that its subtasks are listed and restore it. To try permanent deletion, use a disposable sample task and confirm the prompt.
+5. For offline testing, run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open `http://localhost:4173/tasks`, wait for the service worker to activate, then disable the network in DevTools. Reload, create a task offline, and reload again to confirm it persists. Stop preview with Ctrl+C.
