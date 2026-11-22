@@ -118,6 +118,35 @@ it('selects the scheduler without requesting permissions and reconciles Android 
   await scheduler.sync([{ ...original, at: 9999 }], 10000)
   expect(pending.size).toBe(0)
   expect(Number.isInteger(id) && id > 0 && id <= 2147483647).toBe(true)
+
+  const first = { ...original, key: 'task/1imv84g/0' }
+  const second = { ...original, key: 'task/1okk67u/0' }
+  expect(notificationId(first.key)).toBe(notificationId(second.key))
+  await scheduler.sync([first, second], 10000)
+  expect(pending.size).toBe(2)
+  const secondId = [...pending.values()].find(item => item.extra?.key === second.key)?.id
+  await scheduler.sync([second], 10000)
+  expect([...pending.keys()]).toEqual([secondId])
+})
+
+it('checks notification and exact-alarm access independently and requests access only on demand', async () => {
+  const checkPermissions = vi.fn().mockResolvedValue({ display: 'prompt' })
+  const checkExactNotificationSetting = vi.fn().mockResolvedValue({ exact_alarm: 'denied' })
+  const requestPermissions = vi.fn()
+  const changeExactNotificationSetting = vi.fn()
+  const plugin = { checkPermissions, checkExactNotificationSetting, requestPermissions, changeExactNotificationSetting,
+    areEnabled: vi.fn().mockResolvedValue({ value: true }) } as unknown as LocalNotificationsPlugin
+  const scheduler = new AndroidLocalNotificationScheduler(plugin)
+  expect(await scheduler.status()).toMatchObject({ notifications: 'denied', exact: 'denied', canPrompt: true })
+  expect(requestPermissions).not.toHaveBeenCalled()
+  await scheduler.requestNotifications()
+  expect(requestPermissions).toHaveBeenCalledOnce()
+  checkPermissions.mockResolvedValue({ display: 'denied' })
+  expect(await scheduler.status()).toMatchObject({ notifications: 'denied', canPrompt: false })
+  checkPermissions.mockResolvedValue({ display: 'granted' })
+  expect(await scheduler.status()).toMatchObject({ notifications: 'granted', exact: 'denied' })
+  await scheduler.requestExact()
+  expect(changeExactNotificationSetting).toHaveBeenCalledOnce()
 })
 
 it('reconciles even when there is no Budget subscription', async () => {
