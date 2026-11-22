@@ -28,7 +28,7 @@ export default defineConfig({
           { src: 'icon-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: { clientsClaim: true, globPatterns: ['**/*.{js,css,html,png,woff2,woff}', 'stickers/*.webp'] },
+      workbox: { clientsClaim: true, globPatterns: ['{**/*.{js,css,html,png,woff2,woff},stickers/*.webp}'] },
     }),
   ],
   preview: { headers: { 'Content-Security-Policy': csp } },
