@@ -22,7 +22,7 @@ async function material(passphrase: string) {
   return crypto.subtle.importKey('raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveKey', 'deriveBits'])
 }
 
-async function backupKey(passphrase: string, salt: Uint8Array<ArrayBuffer>) {
+export async function derivePassphraseKey(passphrase: string, salt: Uint8Array<ArrayBuffer>) {
   return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
     await material(passphrase), { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
 }
@@ -34,7 +34,7 @@ export async function encryptBackup(content: string, password: string) {
   const salt = random(16)
   const iv = random(12)
   const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: associatedData },
-    await backupKey(passphrase, salt), encoder.encode(content))
+    await derivePassphraseKey(passphrase, salt), encoder.encode(content))
   return JSON.stringify({ format: 'tidyberrie-aes-gcm', version: 1, iterations,
     salt: encode(salt), iv: encode(iv), payload: encode(new Uint8Array(cipher)) })
 }
@@ -43,7 +43,7 @@ export async function decryptBackup(input: unknown, password: string) {
   const { salt, iv, payload } = envelope.parse(input)
   const passphrase = z.string().min(8).max(1024).parse(password)
   const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: decode(iv), additionalData: associatedData },
-    await backupKey(passphrase, decode(salt)), decode(payload))
+    await derivePassphraseKey(passphrase, decode(salt)), decode(payload))
   return new TextDecoder('utf-8', { fatal: true }).decode(plaintext)
 }
 

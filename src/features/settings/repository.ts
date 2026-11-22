@@ -15,3 +15,12 @@ export function findOrCreateSettings(values: Values) {
   return settings.db.transaction('rw', settings, async () =>
     await settings.get({ key: values.key }) ?? repository.create(values))
 }
+
+export async function saveStoragePermission(id: string, storagePersistent: boolean) {
+  return settings.db.transaction('rw', settings, async () => {
+    await settings.update(id, { storagePersistent })
+    const updated = await settings.get(id)
+    if (!updated) throw new Error('Settings changed')
+    return updated
+  })
+}

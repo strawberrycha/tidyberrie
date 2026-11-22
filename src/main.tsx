@@ -17,6 +17,7 @@ import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { saveDailySnapshot } from './shared/db/backupService'
 import { BackupNudge } from './features/settings/BackupNudge'
 import { AppLock } from './features/settings/AppLock'
+import { syncAvailable } from './features/sync/availability'
 import { ReminderProvider } from './features/reminders/ReminderProvider'
 
 const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
@@ -29,6 +30,9 @@ const Budget = lazy(() => import('./features/budget/Budget').then(module => ({ d
 const BudgetExtras = lazy(() => import('./features/budget/BudgetExtras').then(module => ({ default: module.BudgetExtras })))
 const MonthlySummary = lazy(() => import('./features/budget/MonthlySummary').then(module => ({ default: module.MonthlySummary })))
 const Reminders = lazy(() => import('./features/reminders/Reminders').then(module => ({ default: module.Reminders })))
+
+const Sync = lazy(() => import('./features/sync/Sync').then(module => ({ default: module.Sync })))
+const SyncStartup = lazy(() => import('./features/sync/useSync').then(module => ({ default: module.SyncStartup })))
 
 const screens = [
   { path: '/', title: 'Home', icon: House, Page: Home },
@@ -68,6 +72,7 @@ function ScreenContent({ children }: { children: React.ReactNode }) {
 function App() {
   return <ThemeProvider><BrowserRouter><AppLock><ToastProvider><ReminderProvider>
     <DailySnapshots />
+    {syncAvailable() && <Suspense fallback={null}><SyncStartup /></Suspense>}
     <a className="skip-link" href="#main">Skip to content</a>
     <div className="shell">
       <header className="brand"><NavLink to="/"><img src="/icon-192.png" alt="" width="40" height="40" /> Tidyberrie</NavLink></header>
@@ -82,6 +87,9 @@ function App() {
           {screens.map(({ path, title, Page }) => <Route key={path} path={path} element={<>
             <h1>{title}</h1><Suspense fallback={<p role="status">Loading…</p>}><Page /></Suspense>
           </>} />)}
+          <Route path="/settings/sync" element={<><h1>Sync</h1>
+            <Suspense fallback={<p role="status">Loading…</p>}><Sync /></Suspense>
+          </>} />
           <Route path="/settings/reminders" element={<><h1>Reminders</h1>
             <Suspense fallback={<p role="status">Loading…</p>}><Reminders /></Suspense>
           </>} />

@@ -1,5 +1,5 @@
 import type { Theme } from '../../shared/theme/tokens'
-import { changeSettings, deleteSettings, findOrCreateSettings, restoreSettings } from './repository'
+import { changeSettings, deleteSettings, findOrCreateSettings, restoreSettings, saveStoragePermission } from './repository'
 
 function defaults(key: 'preferences' | 'undo-demo', theme: Theme) {
   return {
@@ -23,7 +23,7 @@ export async function initializeSettings() {
   const settings = await findOrCreateSettings(defaults('preferences', theme))
   if (settings.storagePersistent !== null) return settings
   persistenceRequest ??= requestPersistence()
-  return changeSettings(settings.id, { storagePersistent: await persistenceRequest })
+  return saveStoragePermission(settings.id, await persistenceRequest)
 }
 
 export function loadUndoDemo() {

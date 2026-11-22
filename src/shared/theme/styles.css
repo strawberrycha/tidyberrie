@@ -155,3 +155,6 @@ dialog.settings-card::backdrop { background: #21111b99; }
 .toast-region button { pointer-events: auto; }
 
 .toast-region { right: 80px; max-width: calc(100vw - 96px); flex-wrap: wrap; }
+
+.settings-card .sync-checkbox { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.sync-checkbox input { width: 24px; accent-color: var(--primary); }
