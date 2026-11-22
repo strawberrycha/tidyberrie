@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { themeFields, themeScope } from './model'
 import type { ThemeFields, ThemeScope } from './model'
 import * as repository from './repository'

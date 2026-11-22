@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { iconKeys } from '../../assets/stickers/keys'
 import { defaultRepeat, repeatSchema } from './repeatInput'
 

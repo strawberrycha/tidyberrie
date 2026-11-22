@@ -21,3 +21,10 @@
 .budget-table th, .budget-table td { text-align: start; padding: 8px; border-bottom: 1px solid var(--border); }
 .budget-table td .budget-amount { font-size: 1rem; }
 .budget-view { --chart-primary: var(--primary); --chart-alternate: var(--control-border); }
+
+.budget-view, .budget-controls label, .budget-cards > *, .budget-totals > * { min-width: 0; }
+.budget-view .planner-card, .budget-view .task-actions { overflow-wrap: anywhere; }
+.budget-view .secondary, .budget-view .primary, .budget-controls select { max-width: 100%; }
+.budget-controls input { min-width: 0; }
+.budget-controls label { grid-template-columns: minmax(0, 1fr); }
+.budget-controls select { width: 100%; min-width: 0; }

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { colors, icons } from '../tasks/input'
 import type { Records } from '../../shared/db/schemas'
 

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from './strictValidation'
 import { centavos } from '../utils/money'
 import { themes } from '../theme/tokens'
 import { taskInput } from '../../features/tasks/input'

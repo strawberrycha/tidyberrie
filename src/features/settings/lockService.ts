@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { pinDigest } from '../../shared/db/crypto'
 import { readLock, updateLock } from './lockRepository'
 

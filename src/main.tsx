@@ -20,7 +20,9 @@ import { AppLock } from './features/settings/AppLock'
 import { ReminderProvider } from './features/reminders/ReminderProvider'
 
 const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
-const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ default: module.Home })))
+const loadHome = () => import('./features/dayTheme/Home').then(module => ({ default: module.Home }))
+const Home = lazy(loadHome)
+if (window.location.pathname === '/') void loadHome().catch(() => {})
 const Calendar = lazy(() => import('./features/calendar/Calendar').then(module => ({ default: module.Calendar })))
 const Settings = lazy(() => import('./features/settings/Settings').then(module => ({ default: module.Settings })))
 const Budget = lazy(() => import('./features/budget/Budget').then(module => ({ default: module.Budget })))

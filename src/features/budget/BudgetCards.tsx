@@ -23,7 +23,7 @@ export function BudgetCards({ cards, values, home = false }: {
       <article className={'planner-card budget-card task-color-' + card.color} data-featured={card.key === 'leftMonth'} key={card.key}>
         <h3>{card.label}</h3>
         <Amount value={values[card.key]} />
-        <button className="secondary" type="button" aria-label={'How is ' + card.label + ' calculated?'} onClick={() => setAbout(card)}>How it’s calculated</button>
+        <button className="secondary" type="button" aria-label={'How it’s calculated: ' + card.label} onClick={() => setAbout(card)}>How it’s calculated</button>
       </article>)}
     {about && <TaskDialog title={about.label} close={() => setAbout(undefined)}>
       <p>{cardDefinitions[about.key].explanation}</p>

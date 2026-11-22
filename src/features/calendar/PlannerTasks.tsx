@@ -1,20 +1,16 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { Plus } from 'lucide-react'
-import { useTheme } from '../../shared/theme/ThemeProvider'
 import { TaskCard } from '../tasks/TaskCard'
-import { TaskForm } from '../tasks/TaskForm'
-import { emptyTask } from '../tasks/input'
 import type { TaskRow } from '../tasks/model'
 import { useTaskActions } from '../tasks/useTasks'
 
-export type QuickDraft = { date: string; time?: string }
+import type { QuickDraft } from './QuickAdd'
+export type { QuickDraft } from './QuickAdd'
 
-export function QuickAdd({ draft, close }: { draft: QuickDraft; close: () => void }) {
-  const { preferences } = useTheme()
-  const actions = useTaskActions()
-  const initial = { ...emptyTask(draft.date), startTime: draft.time ?? '', allDay: !draft.time }
-  return <TaskForm initial={initial} title="Add task" busy={actions.busy} close={close}
-    save={value => void actions.save(value, preferences?.weekStart ?? 1, undefined, undefined, close)} />
+const QuickAddForm = lazy(() => import('./QuickAdd').then(module => ({ default: module.QuickAdd })))
+
+export function QuickAdd(props: { draft: QuickDraft; close: () => void }) {
+  return <Suspense fallback={<p role="status">Opening task editor…</p>}><QuickAddForm {...props} /></Suspense>
 }
 
 export function PlannerAddButton({ open, label = 'Add task' }: { open: () => void; label?: string }) {

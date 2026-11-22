@@ -1,5 +1,5 @@
 import { format } from 'date-fns'
-import { z } from 'zod'
+import { z } from './strictValidation'
 import { backupSchema } from './schemas'
 import { decryptBackup, encryptBackup } from './crypto'
 import * as repository from './backupRepository'

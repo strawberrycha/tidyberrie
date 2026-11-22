@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from './strictValidation'
 
 const iterations = 600_000
 const encoder = new TextEncoder()

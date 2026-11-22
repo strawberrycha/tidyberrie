@@ -132,3 +132,14 @@ it('persists retry throttling and disallows disabling a lock before unlock', asy
   await disableLock(version)
   expect((await getLock()).enabled).toBe(false)
 })
+
+it('waits a week before the first backup nudge and between subsequent nudges', async () => {
+  const { claimBackupNudge } = await import('./backupRepository')
+  const start = Date.UTC(2026, 10, 22, 4)
+  const week = 7 * 24 * 60 * 60 * 1000
+  expect(await claimBackupNudge(start)).toBe(false)
+  expect(await claimBackupNudge(start + week - 1)).toBe(false)
+  expect(await claimBackupNudge(start + week)).toBe(true)
+  expect(await claimBackupNudge(start + week)).toBe(false)
+  expect(await claimBackupNudge(start + 2 * week)).toBe(true)
+})

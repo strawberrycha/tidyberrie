@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { taskInput } from './input'
 import type { TaskInput } from './input'
 import { completedStatus, localTimestamp, storedTask, taskValue } from './model'

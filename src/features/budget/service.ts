@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { budgetCardsSchema } from '../../shared/db/schemas'
 import type { Records } from '../../shared/db/schemas'
 import { colors, icons, reminderOffset } from '../tasks/input'

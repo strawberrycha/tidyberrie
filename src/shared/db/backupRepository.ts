@@ -121,6 +121,10 @@ export async function claimBackupNudge(now: number) {
   return db.transaction('rw', recovery, async () => {
     const latestExport = Date.parse((await recovery.get('export'))?.exportedAt ?? '') || 0
     const latestNudge = Date.parse((await recovery.get('nudge'))?.exportedAt ?? '') || 0
+    if (!latestExport && !latestNudge) {
+      await recovery.put({ id: 'nudge', exportedAt: new Date(now).toISOString() })
+      return false
+    }
     if (now - Math.max(latestExport, latestNudge) < 7 * 24 * 60 * 60 * 1000) return false
     await recovery.put({ id: 'nudge', exportedAt: new Date(now).toISOString() })
     return true

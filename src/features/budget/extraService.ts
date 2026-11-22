@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 import { reminderOffset } from '../tasks/input'
 import { categoryKey, parseMoney, previewPurchase } from './engine'
 import type { BudgetData } from './model'

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from '../../shared/db/strictValidation'
 
 export const repeatModes = ['once', 'daily', 'weekdays', 'weekends', 'specific', 'weekly', 'monthly', 'yearly', 'custom'] as const
 export const repeatSchema = z.strictObject({
