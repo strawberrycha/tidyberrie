@@ -4,6 +4,8 @@ import type { Backup, Records } from './schemas'
 
 const names = ['tasks', 'subtasks', 'taskExceptions', 'dayThemes', 'accounts', 'incomes', 'expenses', 'transfers', 'categoryBudgets', 'goals', 'debts', 'budgetHistory', 'settings', 'snapshots'] as const
 const tables = names.map(name => table(name))
+const recovery = db.table<{ id: string; snapshot?: Records['snapshots']; exportedAt?: string }, string>('recoveryDevice')
+const reminderState = db.table('reminderDevice')
 
 async function read<K extends keyof Records>(name: K): Promise<Records[K][]> {
   return table(name).toArray()
@@ -48,8 +50,10 @@ async function rotateSnapshots() {
 }
 
 export function importBackup(backup: Backup, mode: 'merge' | 'replace') {
-  return db.transaction('rw', tables, async () => {
+  return db.transaction('rw', [...tables, recovery, reminderState], async () => {
     if (mode === 'replace') {
+      await captureSafety(localDay())
+      await reminderState.clear()
       for (const target of tables) await target.clear()
     }
     for (const name of names) await write(name, backup.data[name])
@@ -64,5 +68,61 @@ export function dailySnapshot(day: string) {
       await snapshots.add({ ...metadata(), day, data: await readData() })
     }
     await rotateSnapshots()
+  })
+}
+
+
+function localDay() {
+  const date = new Date()
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()].map(value => String(value).padStart(2, '0')).join('-')
+}
+
+async function captureSafety(day: string) {
+  await recovery.put({ id: 'safety', snapshot: { ...metadata(), day, data: await readData() } })
+}
+
+export async function recoveryOverview() {
+  return db.transaction('r', [table('snapshots'), recovery], async () => ({
+    snapshots: await table('snapshots').orderBy('day').reverse().toArray(),
+    safety: (await recovery.get('safety'))?.snapshot,
+    exportedAt: (await recovery.get('export'))?.exportedAt,
+  }))
+}
+
+export async function recordExport() {
+  await recovery.put({ id: 'export', exportedAt: new Date().toISOString() })
+}
+
+export async function restoreSnapshot(id: string, day: string) {
+  return db.transaction('rw', [...tables, recovery, reminderState], async () => {
+    const safety = (await recovery.get('safety'))?.snapshot
+    const snapshot = safety?.id === id ? safety : await table('snapshots').get(id)
+    if (!snapshot) throw new Error('Snapshot unavailable')
+    await captureSafety(day)
+    await reminderState.clear()
+    for (const name of names) {
+      if (name === 'snapshots') continue
+      await table(name).clear()
+      await write(name, snapshot.data[name])
+    }
+  })
+}
+
+export async function deleteAllData() {
+  const targets = [...tables, recovery, reminderState, db.table('lockDevice')]
+  await db.transaction('rw', targets, async () => {
+    for (const target of targets) await target.clear()
+  })
+}
+
+
+
+export async function claimBackupNudge(now: number) {
+  return db.transaction('rw', recovery, async () => {
+    const latestExport = Date.parse((await recovery.get('export'))?.exportedAt ?? '') || 0
+    const latestNudge = Date.parse((await recovery.get('nudge'))?.exportedAt ?? '') || 0
+    if (now - Math.max(latestExport, latestNudge) < 7 * 24 * 60 * 60 * 1000) return false
+    await recovery.put({ id: 'nudge', exportedAt: new Date(now).toISOString() })
+    return true
   })
 }

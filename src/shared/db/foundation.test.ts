@@ -86,3 +86,49 @@ it('retains the latest seven distinct daily snapshots', async () => {
     '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08', '2026-11-09',
   ])
 })
+
+it('creates a safety snapshot atomically and can reverse a snapshot restore', async () => {
+  const recovery = await import('./backupService')
+  const accounts = new Repository(table('accounts'), recordSchemas.accounts)
+  const account = await accounts.create({ name: 'Before', type: 'cash', openingBalance: 100, color: '', icon: '' })
+  await dailySnapshot('2026-11-21')
+  const daily = (await recovery.recoveryOverview()).snapshots[0]
+  await accounts.update(account.id, { name: 'After' })
+  await recovery.restoreSnapshot(daily.id)
+  expect((await accounts.list())[0].name).toBe('Before')
+  const safety = (await recovery.recoveryOverview()).safety
+  await recovery.restoreSnapshot(safety?.id)
+  expect((await accounts.list())[0].name).toBe('After')
+  await expect(async () => recovery.deleteAllData('delete')).rejects.toThrow()
+  await recovery.deleteAllData('DELETE')
+  expect(await accounts.list()).toEqual([])
+  expect((await recovery.recoveryOverview()).safety).toBeUndefined()
+})
+
+it('round trips authenticated backups and rejects a wrong passphrase', async () => {
+  const { encryptBackup, decryptBackup } = await import('./crypto')
+  const password = 'sample passphrase'
+  const content = JSON.stringify(await exportBackup())
+  const a = JSON.parse(await encryptBackup(content, password))
+  const b = JSON.parse(await encryptBackup(content, password))
+  expect(a.salt).not.toBe(b.salt)
+  expect(await decryptBackup(a, password)).toBe(content)
+  await expect(decryptBackup(a, 'another wrong passphrase')).rejects.toThrow()
+})
+
+it('persists retry throttling and disallows disabling a lock before unlock', async () => {
+  const { configureLock, disableLock, getLock, verifyPin } = await import('../../features/settings/lockService')
+  const version = await configureLock('135791', 60)
+  const portable = JSON.stringify(await exportBackup())
+  expect(portable).not.toContain(version)
+  expect(portable).not.toContain('135791')
+  await expect(disableLock()).rejects.toThrow()
+  await verifyPin('246802')
+  await verifyPin('246802')
+  const failed = await verifyPin('246802')
+  expect(failed.retryAt).toBeGreaterThan(Date.now())
+  expect((await getLock()).retryAt).toBe(failed.retryAt)
+  expect(await verifyPin('135791')).toEqual({ retryAt: failed.retryAt })
+  await disableLock(version)
+  expect((await getLock()).enabled).toBe(false)
+})

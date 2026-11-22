@@ -12,7 +12,7 @@ const moods = {
 export function Avatar({ mood, evening = false }: { mood: keyof typeof moods; evening?: boolean }) {
   const { Icon, label, sticker } = moods[mood]
   const pose: StickerKey = mood === 'none' && evening ? 'avatar-sleepy' : sticker
-  return <div className="planner-avatar">
+  return <div className={mood === 'all' ? 'planner-avatar avatar-celebration' : 'planner-avatar'}>
     <Sticker name={pose} size={72} alt={pose === 'avatar-sleepy' ? 'Winding down for the evening' : label}
       fallback={<Icon size={72} strokeWidth={1.75} aria-hidden />} />
   </div>

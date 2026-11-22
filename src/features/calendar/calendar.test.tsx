@@ -7,7 +7,7 @@ import { storedTask } from '../tasks/model'
 import type { TaskGroup } from '../tasks/model'
 import { defaultRepeat } from '../tasks/recurrence'
 import { dashboardSummary } from '../dayTheme/dashboard'
-import { dateLabel, localDate, shiftMonth, stepView, visibleWindow, windowDates } from './dates'
+import { localDate, shiftMonth, stepView, visibleWindow, windowDates } from './dates'
 import { MonthGrid } from './MonthGrid'
 import { summarizeTasks } from './taskWindow'
 import { useLocalClock } from './useCalendarData'
@@ -85,10 +85,10 @@ it('moves focus with arrows across a week boundary and activates the focused dat
       days={new Map()} themeFor={() => undefined} move={move} open={open} week />
   }
   render(<Grid />)
-  const anchor = screen.getByRole('button', { name: dateLabel('2026-12-31') + ', 0 tasks, 0 done' })
+  const anchor = screen.getByRole('button', { name: /^31\s*0 tasks, 0 done/ })
   anchor.focus()
   fireEvent.keyDown(anchor, { key: 'ArrowDown' })
-  const moved = screen.getByRole('button', { name: dateLabel('2027-01-07') + ', 0 tasks, 0 done' })
+  const moved = screen.getByRole('button', { name: /^7\s*0 tasks, 0 done/ })
   expect(moved).toHaveFocus()
   expect(moved).toHaveAttribute('tabindex', '0')
   fireEvent.click(moved)

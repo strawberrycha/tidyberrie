@@ -99,9 +99,59 @@ fieldset label input { display: block; }
   .wide { grid-column: 1 / -1; }
   .toast-region { bottom: 24px; }
 }
-@media (prefers-reduced-motion: no-preference) {
-  a, button { transition: background-color 180ms ease-out, color 180ms ease-out; }
-}
 @media (forced-colors: active) {
   .navigation a[aria-current="page"], .primary { border: 1px solid ButtonText; }
 }
+
+/* Phase 6 palettes are reserved for future selection. */
+[data-theme="cozy-cat-cafe"] {
+  --bg: #fff8f0; --surface: #fff; --soft: #e8c9a0; --accent-1: #d9708a;
+  --accent-2: #e8c9a0; --accent-3: #e8c9a0; --primary: #8e3450;
+  --text: #4b3a33; --text-muted: #5a3c34; --control-border: #815147;
+}
+[data-theme="matcha-berry"] {
+  --bg: #fff5f7; --surface: #fff; --soft: #a8cdb4; --accent-1: #a8cdb4;
+  --accent-2: #a8cdb4; --accent-3: #a8cdb4; --primary: #962f53;
+  --text: #3f2d34; --text-muted: #58434b; --control-border: #775266;
+}
+[data-theme="lavender-cloud"] {
+  --bg: #faf3ff; --surface: #fff; --soft: #d9c7f0; --accent-1: #d9c7f0;
+  --accent-2: #d9c7f0; --accent-3: #d9c7f0; --primary: #843567;
+  --text: #45304a; --text-muted: #583b60; --control-border: #755381;
+}
+[data-theme="mono-blush"] {
+  --bg: #fff; --surface: #fff7f9; --soft: #fff7f9; --accent-1: #fff7f9;
+  --accent-2: #fff7f9; --accent-3: #fff7f9; --primary: #a0395a;
+  --text: #3a2a30; --text-muted: #62444e; --control-border: #805064;
+}
+
+.settings-card, .settings-card form, .settings-card details {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.settings-card label { display: grid; gap: 4px; max-width: 100%; }
+.settings-card form { display: grid; gap: 16px; }
+.settings-card input, .settings-card select { min-width: 0; max-width: 100%; }
+.settings-card details summary { cursor: pointer; min-height: 44px; padding-block: 8px; }
+.settings-card ul { padding-inline-start: 24px; list-style: disc; }
+.settings-card dialog, dialog.settings-card {
+  width: min(32rem, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto;
+  margin: auto; color: var(--text);
+}
+dialog.settings-card:not([open]) { display: none; }
+dialog.settings-card::backdrop { background: #21111b99; }
+.lock-screen { max-width: 32rem; margin: 3rem auto; padding: 16px; }
+.settings-card .settings-link { min-height: 44px; }
+@media (prefers-reduced-motion: no-preference) {
+  .task-card[data-complete="true"] .task-complete, .avatar-celebration { animation: completion-pop 220ms ease-out; }
+  @keyframes completion-pop { 50% { transform: scale(1.08); } }
+}
+
+.backup-nudge { margin-block-end: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+.backup-nudge .actions { margin-block-start: 8px; }
+.settings-link { min-height: 44px; }
+
+.toast-region { pointer-events: none; }
+.toast-region button { pointer-events: auto; }
+
+.toast-region { right: 80px; max-width: calc(100vw - 96px); flex-wrap: wrap; }

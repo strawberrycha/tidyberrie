@@ -38,19 +38,21 @@ export function MonthGrid({ window, anchor, today, days, themeFor, move, open, w
         {dates.slice(row * 7, row * 7 + 7).map((date, column) => {
           const day = days.get(date) ?? emptyDay
           const theme = themeFor(date)
+          const number = Number(date.slice(-2))
+          const timed = day.rows.filter(row => row.value.startTime).slice(0, week ? 2 : 1)
           return <div role="gridcell" key={date} className="calendar-cell">
             <button type="button" aria-current={date === today ? 'date' : undefined} tabIndex={anchor === date ? 0 : -1}
               className="calendar-date" data-outside={!week && anchor.slice(0, 7) !== date.slice(0, 7)}
-              aria-label={dateLabel(date) + ', ' + summaryText(day) + (theme ? ', ' + theme.name : '')}
               ref={element => { if (element) buttons.current.set(date, element); else buttons.current.delete(date) }}
               onClick={() => { move(date); open(date) }} onKeyDown={event => keyDown(event, date, column)}>
-              <span className="calendar-date-top"><b>{Number(date.slice(-2))}</b>{theme && <TaskIcon name={theme.icon} size={16} />}</span>
+              <span className="calendar-date-top"><b>{number}</b>{theme && <TaskIcon name={theme.icon} size={16} />}</span>
               {day.colors.length > 0 && <span className="calendar-dots" aria-hidden="true">
                 {day.colors.map((color, index) => <i key={index} className={'task-color-' + color} />)}
               </span>}
               <span className="calendar-summary">{summaryText(day)}</span>
-              {day.rows.filter(row => row.value.startTime).slice(0, week ? 2 : 1).map(row =>
+              {timed.map(row =>
                 <time key={row.group.task.id + '/' + (row.occurrence ?? '')}>{row.value.startTime}</time>)}
+              <span className="sr-only">{dateLabel(date, { weekday: 'long', month: 'long', year: 'numeric' })}{theme ? ', ' + theme.name : ''}</span>
             </button>
           </div>
         })}

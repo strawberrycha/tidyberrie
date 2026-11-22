@@ -1,23 +1,15 @@
-import { createContext, useContext, useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useContext, useState } from 'react'
+import { reminderView } from './ReminderProvider'
 import { useToast } from '../../shared/ui/Toast'
 import {
   dismissReminder, openSystemSettings, reminderPlatform, requestExact, requestNotifications, scheduleTest,
-  setReminderLimit, snoozeReminder, startReminders,
+  setReminderLimit, snoozeReminder,
 } from './service'
-import type { ReminderState } from './service'
+
 import type { Reminder } from './window'
 
-const state = createContext<ReminderState>({ due: [], limit: 64 })
-
-export function ReminderProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<ReminderState>({ due: [], limit: 64 })
-  useEffect(() => startReminders(setView), [])
-  return <state.Provider value={view}>{children}</state.Provider>
-}
-
 export function useReminders() {
-  const view = useContext(state)
+  const view = useContext(reminderView)
   const show = useToast()
   const [busy, setBusy] = useState(false)
 

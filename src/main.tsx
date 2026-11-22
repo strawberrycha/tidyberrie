@@ -1,6 +1,6 @@
 import { lazy, StrictMode, Suspense, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Capacitor } from '@capacitor/core'
 import { CalendarDays, House, ListTodo, Settings2, Wallet } from 'lucide-react'
 import '@fontsource/nunito/latin-400.css'
@@ -11,10 +11,13 @@ import './shared/theme/styles.css'
 import './shared/ui/stickers.css'
 import { ThemeProvider, useTheme } from './shared/theme/ThemeProvider'
 import { ToastProvider, useToast } from './shared/ui/Toast'
+import { ScreenBoundary } from './shared/ui/ScreenBoundary'
 import { PwaStatus } from './shared/ui/PwaStatus'
 import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { saveDailySnapshot } from './shared/db/backupService'
-import { ReminderProvider } from './features/reminders/useReminders'
+import { BackupNudge } from './features/settings/BackupNudge'
+import { AppLock } from './features/settings/AppLock'
+import { ReminderProvider } from './features/reminders/ReminderProvider'
 
 const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
 const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ default: module.Home })))
@@ -55,8 +58,13 @@ function DailySnapshots() {
   return null
 }
 
+function ScreenContent({ children }: { children: React.ReactNode }) {
+  const { pathname, search } = useLocation()
+  return <ScreenBoundary key={pathname + search}>{children}</ScreenBoundary>
+}
+
 function App() {
-  return <ThemeProvider><ToastProvider><ReminderProvider><BrowserRouter>
+  return <ThemeProvider><BrowserRouter><AppLock><ToastProvider><ReminderProvider>
     <DailySnapshots />
     <a className="skip-link" href="#main">Skip to content</a>
     <div className="shell">
@@ -67,7 +75,8 @@ function App() {
         </NavLink>)}
       </nav>
       <main id="main" tabIndex={-1}>
-        <Routes>
+        <BackupNudge />
+        <ScreenContent><Routes>
           {screens.map(({ path, title, Page }) => <Route key={path} path={path} element={<>
             <h1>{title}</h1><Suspense fallback={<p role="status">Loading…</p>}><Page /></Suspense>
           </>} />)}
@@ -77,11 +86,11 @@ function App() {
           <Route path="/budget/extras" element={<><h1>Budget extras</h1><Suspense fallback={<p role="status">Loading…</p>}><BudgetExtras /></Suspense></>} />
           <Route path="/budget/summary" element={<><h1>Monthly summary</h1><Suspense fallback={<p role="status">Loading…</p>}><MonthlySummary /></Suspense></>} />
           <Route path="*" element={<><h1>Page unavailable</h1><NavLink to="/">Go to Home</NavLink></>} />
-        </Routes>
+        </Routes></ScreenContent>
       </main>
     </div>
     {!Capacitor.isNativePlatform() && <PwaStatus />}
-  </BrowserRouter></ReminderProvider></ToastProvider></ThemeProvider>
+  </ReminderProvider></ToastProvider></AppLock></BrowserRouter></ThemeProvider>
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>)

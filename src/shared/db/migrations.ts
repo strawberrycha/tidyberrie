@@ -30,4 +30,5 @@ export function registerMigrations(db: Dexie) {
     incomes: 'id,expectedDate,status,accountId,deletedAt,debtId',
     expenses: 'id,date,status,accountId,deletedAt,seriesId,&[seriesId+date],debtId',
   })
+  db.version(7).stores({ recoveryDevice: 'id', lockDevice: 'id' })
 }

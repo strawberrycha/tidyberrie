@@ -1,84 +1,62 @@
-import { useEffect, useState } from 'react'
-import { exportBackup, readBackup, restoreBackup } from '../../shared/db/backupService'
+import { useRef, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
+import * as backupService from '../../shared/db/backupService'
 import type { Backup } from '../../shared/db/schemas'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { useToast } from '../../shared/ui/Toast'
-import { deleteDemo, loadUndoDemo, restoreDemo } from './service'
 
 export function useSettingsTools() {
   const [backup, setBackup] = useState<Backup>()
-  const [demo, setDemo] = useState<Awaited<ReturnType<typeof loadUndoDemo>>>()
   const [busy, setBusy] = useState(false)
+  const pending = useRef(false)
   const { refresh } = useTheme()
   const show = useToast()
+  const overview = useLiveQuery(async () => {
+    try { return await backupService.recoveryOverview() } catch { return null }
+  }, [])
 
-  useEffect(() => {
-    let active = true
-    loadUndoDemo().then(
-      value => { if (active) setDemo(value) },
-      () => { if (active) show({ message: 'Could not open the Undo demo.' }) },
-    )
-    return () => { active = false }
-  }, [show])
+  async function perform(work: () => Promise<void>, error: string) {
+    if (pending.current) return
+    pending.current = true
+    setBusy(true)
+    try { await work() } catch { show({ message: error }) } finally {
+      pending.current = false
+      setBusy(false)
+    }
+  }
 
-  async function download() {
-    try {
-      const data = await exportBackup()
-      const url = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }))
+  return {
+    overview, backup, busy, importCounts: backup ? backupService.backupCounts(backup.data) : [],
+    download: (kind: 'json' | 'encrypted' | 'csv', passphrase: string) => perform(async () => {
+      const content = await backupService.makeExport(kind, passphrase)
+      const url = URL.createObjectURL(new Blob([content], { type: kind === 'csv' ? 'text/csv' : 'application/json' }))
       const link = document.createElement('a')
       link.href = url
-      link.download = 'tidyberrie-backup.json'
+      link.download = kind === 'csv' ? 'tidyberrie-data.csv' : kind === 'encrypted' ? 'tidyberrie-encrypted.json' : 'tidyberrie-backup.json'
       link.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      show({ message: 'Backup exported.' })
-    } catch {
-      show({ message: 'Could not export your backup.' })
-    }
-  }
-
-  async function select(file?: File) {
-    setBackup(undefined)
-    if (!file) return
-    setBusy(true)
-    try {
-      setBackup(await readBackup(file))
-    } catch {
-      show({ message: 'Choose a valid Tidyberrie JSON backup up to 10 MB.' })
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function importData(mode: 'merge' | 'replace') {
-    if (!backup || busy) return
-    setBusy(true)
-    try {
-      await restoreBackup(backup, mode)
+      if (kind !== 'csv') await backupService.recordExport()
+      show({ message: kind === 'csv' ? 'CSV download started.' : 'Backup download started.' })
+    }, 'Could not export. Check your passphrase or backup size.'),
+    select: (file: File, passphrase: string) => perform(async () => {
+      setBackup(undefined)
+      setBackup(await backupService.readBackup(file, passphrase))
+    }, 'Could not read the backup. Check the file, its size, and the passphrase for encrypted backups.'),
+    importData: (mode: 'merge' | 'replace') => perform(async () => {
+      if (!backup) return
+      await backupService.restoreBackup(backup, mode)
       setBackup(undefined)
       await refresh()
-      setDemo(await loadUndoDemo())
       show({ message: 'Backup imported.' })
-    } catch {
-      show({ message: 'Could not finish importing the backup.' })
-    } finally {
-      setBusy(false)
-    }
+    }, 'Could not finish importing the backup.'),
+    restore: (id: string) => perform(async () => {
+      await backupService.restoreSnapshot(id)
+      await refresh()
+      show({ message: 'Snapshot restored. The previous data is in the safety snapshot.' })
+    }, 'Could not restore the snapshot.'),
+    removeAll: (confirmation: string) => perform(async () => {
+      await backupService.deleteAllData(confirmation)
+      window.location.reload()
+    }, 'Could not delete your data.'),
   }
-
-  async function restoreItem(id: string) {
-    setDemo(await restoreDemo(id))
-  }
-
-  async function remove() {
-    if (!demo) return
-    try {
-      const deleted = await deleteDemo(demo.id)
-      setDemo(deleted)
-      show({ message: 'Sample item moved to Trash.', action: { label: 'Undo', run: () => restoreItem(deleted.id) } })
-    } catch {
-      show({ message: 'Could not delete the sample item.' })
-    }
-  }
-
-  return { backup, busy, demo, download, select, importData, remove, restoreItem }
 }
