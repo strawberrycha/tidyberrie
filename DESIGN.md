@@ -44,3 +44,7 @@ All hex values are proposals. Verify WCAG AA contrast for every text/background 
 ## Components
 
 Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast with Undo, Empty state, Tab bar, and Avatar with moods.
+
+## Navigation and Home
+
+Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and clock on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.

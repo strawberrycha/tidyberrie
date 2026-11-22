@@ -8,7 +8,7 @@ Tidyberrie is a private, offline Android APK for one phone, built with React, Vi
 - Use design tokens for colors, spacing, and typography. Support WCAG AA, 48dp Android targets, 200% text, visible focus, and reduced motion. Pair color with accessible text or icons.
 - Keep CSP strict and bundle all runtime assets in the APK. Retain local backups, snapshots, Trash, and Undo. Request Android permissions only when needed.
 - Log each dependency and decision briefly in DECISIONS.md. Update existing docs in place. Create Markdown files only when explicitly asked.
-- Run lint, typecheck, unit tests, and build before finishing. Keep tests meaningful. Remove tests for retired features only when their behavior has been removed. Run APK or browser checks as applicable.
+- Verification levels. LIGHT is the default for UI and small tasks and runs lint, typecheck, and unit tests. FULL is for milestones or when requested and adds the production build, Playwright, and the Android debug build. Keep tests meaningful. Remove tests for retired features only when their behavior has been removed. Run APK or browser checks as applicable.
 - Commit locally in small conventional commits. Never push or handle credentials. Keep the project in OneDrive. Retry an EBUSY, EPERM, or file-lock failure once, then stop and report the failed command if it recurs.
 
 Finish with what changed, files changed, how to run, manual test steps, limitations, and decisions needed.

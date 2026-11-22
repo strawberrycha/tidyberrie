@@ -5,7 +5,7 @@ Tidyberrie is a personal Android APK. Data and assets stay on the phone. Work on
 ## Roadmap
 
 1. Task Organizer
-2. Navigation shell and Home
+2. Navigation shell and Home (in progress)
 3. Calendar
 4. Budget
 5. Meals, Events, and routine layer
@@ -19,6 +19,10 @@ Tidyberrie is a personal Android APK. Data and assets stay on the phone. Work on
 - Selection and bulk actions, search, filter, sort, and group.
 - List and Day timeline views. Swipe right to mark Done, swipe left to reschedule, and long-press to select.
 - Share one reminder engine with snooze and mark-done actions. Treat a native alarm mode as a later stretch step.
+
+## Home spec
+
+Five bottom tabs keep their own navigation and scroll state. More groups utilities and settings. Home leads with a live clock, greeting, and week strip, followed by a short actionable plan and a three-day preview. The quick-add button opens the task form directly while Budget is disabled. Show reminder health only when needed.
 
 ## Backlog
 

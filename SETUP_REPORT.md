@@ -19,9 +19,9 @@ Use `npm run dev` for development. Install Playwright Chromium with `npx playwri
 
 ## Phone smoke test
 
-1. Open the app in airplane mode. Create a task with two subtasks. Complete it and use Undo.
-2. Delete the task. Open Task Trash and restore it. Quit and reopen the app to verify persistence.
-3. In Settings → Backups, export JSON and re-import it. Check the preview counts before merging. Check the daily snapshot list and try restoring using test data.
-4. Enable App Lock, background the app beyond the configured delay, return, and unlock it.
-5. Open Calendar and Budget and check the Coming soon placeholders. Return to Home and Settings and verify that Budget content and Day Theme controls are hidden.
-6. Test an Android task reminder and inspect notification permissions if it does not fire.
+1. Open Home in airplane mode. Check the clock, greeting, week strip, and first task card.
+2. Tap +, then enter and save a task. Confirm the first tap opens its form directly. Select another weekday, change weeks, and press Today. Add four open tasks, complete one and use Undo, then check Show more.
+3. Set a Tasks chip and filter, scroll, switch tabs, and return. Check that the chip, filter, and scroll survive. Re-tap the active tab to go to its root and top.
+4. Open More → Appearance, set a name and 24-hour time, and check Home. Inspect Trash, Reminders and Alarms, Backup and Restore, Security, About, and disabled Meals.
+5. From a More detail screen, press hardware Back to More, then Back to Home. Verify a first Back shows the exit prompt and a second within two seconds exits.
+6. Open Calendar and Budget and verify their placeholders. Verify that Home has no Budget card and the phone has no Day Theme controls.
