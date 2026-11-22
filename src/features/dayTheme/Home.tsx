@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Wallet } from 'lucide-react'
+import { ListTodo, Wallet } from 'lucide-react'
+import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { dateLabel, localDate, weekdayOf } from '../calendar/dates'
 import { PlannerAddButton, PlannerTaskList, QuickAdd } from '../calendar/PlannerTasks'
 import { emptyDay } from '../calendar/taskWindow'
@@ -30,7 +31,7 @@ export function Home() {
     <section className="planner-card planner-greeting">
       <div><h2>{greeting}</h2><p><time dateTime={today}>{dateLabel(today)}</time></p></div>
       <DayThemeBadge theme={theme} />
-      <Avatar mood={mood} />
+      <Avatar mood={mood} evening={now.getHours() >= 18} />
     </section>
     {data.error && <p role="alert">Could not load today’s tasks.</p>}
     {themes.error && <p role="alert">Could not load Day Themes.</p>}
@@ -56,12 +57,12 @@ export function Home() {
     </div>
     <section className="planner-card">
       <h2>Today’s tasks</h2>
-      {!total && !data.loading && <p>Nothing planned today.</p>}
+      {!total && !data.loading && <div className="planner-empty"><EmptyIllustration icon={ListTodo} sticker="check" /><p>Nothing planned today.</p></div>}
       <PlannerTaskList key={today} rows={day.rows} now={now} />
     </section>
     <section className="planner-card">
       <h2>Budget</h2>
-      <p className="planner-budget"><Wallet size={22} aria-hidden /> Set up your budget</p>
+      <div className="planner-empty"><EmptyIllustration icon={Wallet} sticker="avatar-wallet" /><p>Set up your budget</p></div>
     </section>
     <PlannerAddButton open={() => setDraft(today)} />
     {draft && <QuickAdd draft={{ date: draft }} close={() => setDraft(undefined)} />}

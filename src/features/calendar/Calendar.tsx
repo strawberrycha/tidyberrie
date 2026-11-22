@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { DayThemeBadge } from '../dayTheme/DayThemeBadge'
 import { assignmentValue, ThemeOptions } from '../dayTheme/DayThemeSettings'
@@ -26,7 +27,8 @@ function DayTimeline({ day, now, today, quick }: {
   return <div className="planner-day">
     <section className="planner-card">
       <h3>All day</h3>
-      {untimed.length ? <PlannerTaskList rows={untimed} now={now} /> : <p>No all-day tasks.</p>}
+      {untimed.length ? <PlannerTaskList rows={untimed} now={now} />
+        : <div className="planner-empty"><EmptyIllustration icon={CalendarDays} sticker="journal" /><p>No all-day tasks.</p></div>}
     </section>
     <ol className="planner-hours" aria-label="Hours">
       {hours.map((hour, index) => {

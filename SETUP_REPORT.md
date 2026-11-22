@@ -101,3 +101,15 @@ Lint, strict typecheck, the 35-test suite, and the production build passed. Head
 2. Open **Calendar**, Tab into the Month grid, use the arrow keys to move, and press Enter to open a date. Override its Day Theme, add a task from the date panel, and confirm the count changes. Switch to Week and Agenda and check the same date.
 3. Select **Today → Day**, choose an empty hour, and confirm that the form prefills the date and time. Check the current-time line. On Home, complete a task and verify that progress updates. The overdue link should open the Overdue list directly.
 4. Run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open `http://localhost:4173` and wait for the service worker to activate. Set DevTools Network to Offline, reload, and create a task from Calendar. Reload again and confirm the task and Day Theme persist. Stop preview with Ctrl+C.
+
+## Phase 3B sticker and avatar assets
+
+The pipeline validates individual transparent PNGs, generates two optimized WebPs per key, writes the typed manifest, and prints missing keys and cache weight. The current artwork source folder is absent. With the current checkout all illustration slots use Lucide.
+
+Headless Chrome verified a separate build with four temporary sticker inputs, including image loading, Lucide fallback, keyboard picker selection, and persistence of task and Day Theme choices after an offline reload. The shipped manifest remains empty. The asset script is covered by tests for deterministic generation, missing sources, and invalid PNGs.
+
+### Manual test
+
+1. Run `npm ci` and `npm run assets` to see the missing keys. To add artwork, place a transparent square PNG at least 256px wide in `design-source/stickers/`, for example `study.png` or `avatar-happy.png`, then rerun `npm run assets`. Source PNGs stay local. Commit the generated manifest and WebPs when adding actual art.
+2. Run `npm run dev`. Open a task form, expand **More options**, and search for **Study**. Try Tab, arrow keys, Home, and End with the picker unfiltered. Choose an icon and save. Edit the task again to confirm the choice persisted. Repeat in **Settings → Day Themes** with a custom theme.
+3. Run `npm run build` and `npm run preview -- --port 4173 --strictPort`. Open the preview and wait until the service worker is active. Disable network in DevTools and reload. Check Home’s avatar and assigned theme badge. Reopen the task picker and confirm the saved selection and the cached illustration or Lucide fallback.

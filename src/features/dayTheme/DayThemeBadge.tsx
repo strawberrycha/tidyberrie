@@ -4,7 +4,7 @@ import type { ThemeChoice } from './model'
 
 export function DayThemeBadge({ theme }: { theme?: ThemeChoice }) {
   return <span className={'planner-badge' + (theme ? ' task-color-' + theme.color : '')}>
-    {theme ? <TaskIcon name={theme.icon} /> : <Sun size={22} aria-hidden />}
+    {theme ? <TaskIcon name={theme.icon} size={48} /> : <Sun size={48} aria-hidden />}
     {theme?.name ?? 'No Day Theme'}
   </span>
 }

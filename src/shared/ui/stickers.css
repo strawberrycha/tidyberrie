@@ -1,0 +1,13 @@
+.sticker-image { display: block; object-fit: contain; flex: none; }
+.sticker-picker { display: grid; gap: 8px; min-width: 0; }
+.sticker-picker-title { font-weight: 800; }
+.sticker-options { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 72px), 1fr)); }
+.sticker-options button {
+  display: grid; justify-items: center; align-content: start; gap: 8px;
+  padding: 8px 4px; min-height: 72px; border: 1px solid var(--control-border); border-radius: 14px;
+  background: var(--surface); color: var(--text); font-size: .875rem; overflow-wrap: anywhere;
+}
+.sticker-options button[aria-checked="true"] { background: var(--soft); border: 2px solid var(--primary); padding: 7px 3px; font-weight: 800; }
+@media (forced-colors: active) {
+  .sticker-options button[aria-checked="true"] { border-color: Highlight; }
+}

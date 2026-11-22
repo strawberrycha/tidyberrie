@@ -33,7 +33,7 @@
 .planner-ring svg { width: 100%; fill: none; stroke-width: 8; transform: rotate(-90deg); }
 .planner-ring-track { stroke: var(--border); }
 .planner-ring-value { stroke: var(--primary); stroke-linecap: round; }
-.planner-budget { display: flex; align-items: center; gap: 8px; }
+.planner-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .planner-controls { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
 .planner-controls .icon-button { background: var(--surface); border: 1px solid var(--control-border); }
 .calendar-scroll { overflow-x: auto; padding: 4px; margin: -4px; }

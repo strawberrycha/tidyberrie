@@ -7,17 +7,18 @@ import '@fontsource/nunito/latin-700.css'
 import '@fontsource/nunito/latin-800.css'
 import '@fontsource/caveat/latin-700.css'
 import './shared/theme/styles.css'
+import './shared/ui/stickers.css'
 import { ThemeProvider, useTheme } from './shared/theme/ThemeProvider'
 import { ToastProvider, useToast } from './shared/ui/Toast'
 import { PwaStatus } from './shared/ui/PwaStatus'
 import { useTaskMaintenance } from './features/tasks/useTaskMaintenance'
 import { Budget } from './features/budget/Budget'
-import { Settings } from './features/settings/Settings'
 import { saveDailySnapshot } from './shared/db/backupService'
 
 const Tasks = lazy(() => import('./features/tasks/Tasks').then(module => ({ default: module.Tasks })))
 const Home = lazy(() => import('./features/dayTheme/Home').then(module => ({ default: module.Home })))
 const Calendar = lazy(() => import('./features/calendar/Calendar').then(module => ({ default: module.Calendar })))
+const Settings = lazy(() => import('./features/settings/Settings').then(module => ({ default: module.Settings })))
 
 const screens = [
   { path: '/', title: 'Home', icon: House, Page: Home },

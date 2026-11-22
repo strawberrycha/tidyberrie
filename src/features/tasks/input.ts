@@ -1,9 +1,10 @@
 import { z } from 'zod'
+import { iconKeys } from '../../assets/stickers/keys'
 import { defaultRepeat, repeatSchema } from './repeatInput'
 
 export const colors = ['rose', 'blush', 'peach', 'berry', 'lavender', 'mint', 'honey', 'sky'] as const
 export const colorLabels = ['Rose', 'Blush', 'Peach', 'Berry', 'Lavender', 'Mint', 'Honey', 'Sky']
-export const icons = ['check', 'book', 'briefcase', 'heart', 'home', 'leaf', 'star', 'sparkles'] as const
+export const icons = iconKeys
 export const priorities = ['low', 'medium', 'high'] as const
 export const statuses = ['todo', 'doing', 'done'] as const
 export const statusLabels = { todo: 'To do', doing: 'In progress', done: 'Done' }

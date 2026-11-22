@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Archive, ListTodo, Plus, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../../shared/theme/ThemeProvider'
+import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { colorLabels, colors, emptyTask, priorities, statusLabels, statuses } from './input'
 import type { TaskInput } from './input'
 import { actionDate, smartLists, smartRows } from './lists'
@@ -132,7 +133,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
       </div>}
     </>}
     {state?.error ? <p role="alert">Tasks could not be loaded.</p> : !groups ? <p role="status">Loading tasks…</p> : size === 0
-      ? <section className="empty-card"><div className="sticker-slot" aria-hidden="true"><ListTodo size={48} /></div>
+      ? <section className="empty-card"><EmptyIllustration sticker="check" icon={ListTodo} />
         <h2>{trash ? 'Trash is empty' : 'No tasks to show'}</h2>
         <p>{trash ? 'Deleted tasks stay here for 30 days.' : query || Object.values(filters).some(Boolean) ? 'Try a different search or filter.' : emptyMessages[list]}</p>
       </section>

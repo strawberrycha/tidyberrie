@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { colorLabels, colors, icons } from '../tasks/input'
-import { iconLabel } from '../tasks/icons'
+import { colorLabels, colors } from '../tasks/input'
+import { IconPicker } from '../tasks/IconPicker'
 import { TaskDialog } from '../tasks/TaskDialog'
 import { localDate } from '../tasks/recurrence'
 import { DayThemeBadge } from './DayThemeBadge'
@@ -81,10 +81,7 @@ export function DayThemeSettings() {
           aria-invalid={!!error} aria-describedby={error ? 'day-theme-name-error' : undefined}
           onChange={event => setEditor({ ...editor, fields: { ...editor.fields, name: event.target.value } })} /></label>
         {error && <p className="task-error" id="day-theme-name-error" role="alert">{error}</p>}
-        <label>Icon<select value={editor.fields.icon} onChange={event =>
-          setEditor({ ...editor, fields: { ...editor.fields, icon: event.target.value as ThemeFields['icon'] } })}>
-          {icons.map(icon => <option key={icon} value={icon}>{iconLabel(icon)}</option>)}
-        </select></label>
+        <IconPicker value={editor.fields.icon} change={icon => setEditor({ ...editor, fields: { ...editor.fields, icon } })} />
         <label>Color<select value={editor.fields.color} onChange={event =>
           setEditor({ ...editor, fields: { ...editor.fields, color: event.target.value as ThemeFields['color'] } })}>
           {colors.map((color, index) => <option key={color} value={color}>{colorLabels[index]}</option>)}

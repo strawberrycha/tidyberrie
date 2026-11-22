@@ -22,13 +22,13 @@ function preset(key: string, name: string, icon: ThemeFields['icon'], color: The
 }
 
 export const presets = [
-  preset('study', 'Study', 'book', 'lavender'), preset('work', 'Work', 'briefcase', 'sky'),
-  preset('deep-work', 'Deep Work', 'star', 'berry'), preset('rest', 'Rest', 'leaf', 'mint'),
-  preset('self-care', 'Self-care', 'heart', 'rose'), preset('health', 'Health', 'heart', 'mint'),
-  preset('errands', 'Errands', 'check', 'honey'), preset('travel', 'Travel', 'briefcase', 'sky'),
-  preset('celebration', 'Celebration', 'sparkles', 'blush'), preset('journal', 'Journal', 'book', 'peach'),
-  preset('goals', 'Goals', 'star', 'lavender'), preset('cleaning', 'Cleaning', 'home', 'mint'),
-  preset('budget-day', 'Budget Day', 'briefcase', 'honey'),
+  preset('study', 'Study', 'study', 'lavender'), preset('work', 'Work', 'work', 'sky'),
+  preset('deep-work', 'Deep Work', 'deep-work', 'berry'), preset('rest', 'Rest', 'rest', 'mint'),
+  preset('self-care', 'Self-care', 'self-care', 'rose'), preset('health', 'Health', 'health', 'mint'),
+  preset('errands', 'Errands', 'errands', 'honey'), preset('travel', 'Travel', 'travel', 'sky'),
+  preset('celebration', 'Celebration', 'celebration', 'blush'), preset('journal', 'Journal', 'journal', 'peach'),
+  preset('goals', 'Goals', 'goals', 'lavender'), preset('cleaning', 'Cleaning', 'cleaning', 'mint'),
+  preset('budget-day', 'Budget Day', 'budget-day', 'honey'),
 ]
 
 export function choices(records: DayThemeRecord[]): ThemeChoice[] {

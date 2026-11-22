@@ -1,8 +1,8 @@
 import { useId, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { colorLabels, colors, icons, newSubtask, offsets, priorities, statusLabels, statuses, taskInput } from './input'
+import { colorLabels, colors, newSubtask, offsets, priorities, statusLabels, statuses, taskInput } from './input'
 import type { SubtaskInput, TaskInput } from './input'
-import { iconLabel } from './icons'
+import { IconPicker } from './IconPicker'
 import { repeatModes, weekdays } from './recurrence'
 import type { Repeat } from './recurrence'
 import { TaskDialog } from './TaskDialog'
@@ -80,7 +80,6 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
         <label>Description<textarea {...field('description')} value={value.description} maxLength={2000} rows={3} onChange={event => set('description', event.target.value)} />{error('description')}</label>
         <div className="task-fields">
           <label>Color<select value={value.color} onChange={event => set('color', event.target.value as TaskInput['color'])}>{colors.map((color, index) => <option key={color} value={color}>{colorLabels[index]}</option>)}</select></label>
-          <label>Icon<select value={value.icon} onChange={event => set('icon', event.target.value as TaskInput['icon'])}>{icons.map(icon => <option key={icon} value={icon}>{iconLabel(icon)}</option>)}</select></label>
           <label>Tag<input {...field('tag')} value={value.tag} maxLength={30} onChange={event => set('tag', event.target.value)} />{error('tag')}</label>
           <label>Priority<select value={value.priority} onChange={event => set('priority', event.target.value as TaskInput['priority'])}>{priorities.map(priority => <option key={priority}>{priority}</option>)}</select></label>
           <label>Status<select value={value.status} onChange={event => set('status', event.target.value as TaskInput['status'])}>
@@ -88,6 +87,7 @@ export function TaskForm({ initial, title, occurrence, busy, close, save }: {
           </select></label>
           <label className="task-check"><input type="checkbox" checked={value.pinned} onChange={event => set('pinned', event.target.checked)} /> Pinned</label>
         </div>
+        <IconPicker value={value.icon} change={icon => set('icon', icon)} />
         {!occurrence && <fieldset>
           <legend>Recurrence</legend>
           <label>Repeat<select value={value.repeat.mode} onChange={event => {
