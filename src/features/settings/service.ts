@@ -1,3 +1,5 @@
+import { z } from '../../shared/db/strictValidation'
+import { recordSchemas } from '../../shared/db/schemas'
 import type { Theme } from '../../shared/theme/tokens'
 import { changeSettings, deleteSettings, findOrCreateSettings, restoreSettings, saveStoragePermission } from './repository'
 
@@ -40,3 +42,8 @@ export function setWeekStart(id: string, weekStart: number) {
 
 export const deleteDemo = deleteSettings
 export const restoreDemo = restoreSettings
+
+const appearanceInput = recordSchemas.settings.pick({ yourName: true, timeFormat: true, textSize: true }).partial()
+export function setAppearance(id: string, input: unknown) {
+  return changeSettings(z.uuid().parse(id), appearanceInput.parse(input))
+}

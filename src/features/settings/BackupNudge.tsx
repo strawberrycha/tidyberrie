@@ -25,7 +25,7 @@ export function BackupNudge() {
   return show && <aside className="backup-nudge" aria-label="Backup reminder">
     <p>Back up your data to keep a copy outside this device.</p>
     <div className="actions">
-      <Link className="secondary settings-link" to="/settings#backups" onClick={dismiss}>Open Settings</Link>
+      <Link className="secondary settings-link" to="/more/backups" onClick={dismiss}>Open Settings</Link>
       <button className="secondary" onClick={dismiss}>Dismiss backup reminder</button>
     </div>
   </aside>

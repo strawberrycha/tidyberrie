@@ -1,69 +1,184 @@
-import { features } from '../../app/features'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ListTodo } from 'lucide-react'
-import { HomeBudget } from '../budget/HomeBudget'
+import { AlarmClock, Check, ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper } from 'lucide-react'
+import { features } from '../../app/features'
+import { moreRoute } from '../../app/navigation'
+import { useMinuteClock } from '../../app/useMinuteClock'
+import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
-import { dateLabel, localDate, weekdayOf } from '../calendar/dates'
-import { PlannerAddButton, PlannerTaskList, QuickAdd } from '../calendar/PlannerTasks'
-import { emptyDay } from '../calendar/taskWindow'
-import { useCalendarData, useLocalClock } from '../calendar/useCalendarData'
+import { dateLabel, localDate, visibleWindow, windowDates } from '../calendar/dates'
+import { PlannerAddButton, QuickAdd } from '../calendar/PlannerTasks'
+import { emptyDay, summarizeTasks } from '../calendar/taskWindow'
+import { useCalendarData } from '../calendar/useCalendarData'
+import { defaultRepeat, addDays } from '../tasks/recurrence'
+import { TaskIcon } from '../tasks/icons'
+import { TaskDialog } from '../tasks/TaskDialog'
+import { TaskForm } from '../tasks/TaskForm'
+import { useTaskActions } from '../tasks/useTasks'
+import type { TaskRow } from '../tasks/model'
+import { useReminders } from '../reminders/useReminders'
 import { Avatar } from './Avatar'
-import { DayThemeBadge } from './DayThemeBadge'
-import { dashboardSummary } from './dashboard'
-import { resolveDayTheme } from './model'
-import { useDayThemes } from './useDayThemes'
+import { dailyQuote, greeting, openPlan, relativeTime } from '../home/model'
+import { BillLine, BudgetQuickEditor, HomeBudgetSummary, useHomeBudget } from '../home/BudgetSummary'
 import '../tasks/tasks.css'
 import '../calendar/planner.css'
 
-export function Home() {
-  const now = useLocalClock()
-  const today = localDate(now)
-  const [draft, setDraft] = useState<string>()
-  const data = useCalendarData({ from: today, through: today })
-  const themes = useDayThemes(features.dayTheme)
-  const theme = resolveDayTheme(themes.index, today, weekdayOf(today))
-  const day = data.days.get(today) ?? emptyDay
-  const { done, next, overdue, mood } = useMemo(() => dashboardSummary(day.rows, data.groups, now), [day, data.groups, now])
-  const total = day.rows.length
-  const circumference = 2 * Math.PI * 38
-  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+const brief = { weekday: 'short', month: 'short', day: 'numeric' } as const
+type BudgetState = ReturnType<typeof useHomeBudget>
 
-  return <div className="planner-view">
-    <section className="planner-card planner-greeting">
-      <div><h2>{greeting}</h2><p><time dateTime={today}>{dateLabel(today)}</time></p></div>
-      {features.dayTheme && <DayThemeBadge theme={theme} />}
-      <Avatar mood={mood} evening={now.getHours() >= 18} />
-    </section>
-    {data.error && <p role="alert">Could not load today’s tasks.</p>}
-    {features.dayTheme && themes.error && <p role="alert">Could not load Day Themes.</p>}
-    {data.loading && <p role="status">Loading today’s tasks…</p>}
-    <div className="planner-home-grid">
-      <section className="planner-card planner-progress">
-        <h2>Today’s progress</h2>
-        <div className="planner-ring">
-          <svg viewBox="0 0 96 96" aria-hidden="true">
-            <circle className="planner-ring-track" cx="48" cy="48" r="38" />
-            {done > 0 && <circle className="planner-ring-value" cx="48" cy="48" r="38" strokeDasharray={circumference}
-              strokeDashoffset={circumference * (1 - done / total)} />}
-          </svg>
-        </div>
-        <p role="status">{done} of {total} done</p>
-        {features.tasks && <Link className="secondary" to="/tasks?list=Overdue">{overdue} overdue</Link>}
-      </section>
-      <section className="planner-card">
-        <h2>Next up</h2>
-        {next ? <div><strong>{next.value.title}</strong><p>{next.value.allDay || !next.value.startTime ? 'Any time today' : next.value.startTime}</p></div>
-          : <p>No upcoming tasks today.</p>}
-      </section>
-    </div>
-    <section className="planner-card">
-      <h2>Today’s tasks</h2>
-      {!total && !data.loading && <div className="planner-empty"><EmptyIllustration icon={ListTodo} sticker="check" /><p>Nothing planned today.</p></div>}
-      <PlannerTaskList key={today} rows={day.rows} now={now} />
-    </section>
-    {features.budget && <HomeBudget today={today} />}
-    {features.tasks && <PlannerAddButton open={() => setDraft(today)} />}
-    {features.tasks && draft && <QuickAdd draft={{ date: draft }} close={() => setDraft(undefined)} />}
+export function Home({ overdue = 0 }: { overdue?: number }) {
+  const now = useMinuteClock()
+  const today = localDate(now)
+  const [selection, select] = useState<{ date: string; today: string }>()
+  const selected = selection?.today === today ? selection.date : today
+  if (features.budget) return <HomeWithBudget now={now} today={today} selected={selected} overdue={overdue}
+    select={date => select({ date, today })} />
+  return <HomePlan now={now} today={today} selected={selected} overdue={overdue} select={date => select({ date, today })} />
+}
+
+type HomeProps = { now: Date; today: string; selected: string; overdue: number; select: (date: string) => void }
+
+function HomeWithBudget(props: HomeProps) {
+  const budget = useHomeBudget(props.today, props.selected)
+  return <HomePlan {...props} budget={budget} />
+}
+
+function HomePlan({ now, today, selected, overdue, select, budget }: HomeProps & { budget?: BudgetState }) {
+  const { preferences } = useTheme()
+  const { status } = useReminders()
+  const [retry, setRetry] = useState(0)
+  return <div className="home-view">
+    <header className="home-top">
+      <h1><img src="/icon-192.png" alt="" width="32" height="32" />Tidyberrie</h1>
+      <time dateTime={now.toISOString()}>{new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h' }).format(now)}</time>
+    </header>
+    {(status?.notifications === 'denied' || status?.exact === 'denied' || status?.exact === 'prompt') &&
+      <Link className="home-reminder" to={moreRoute('reminders')}><CircleAlert size={18} aria-hidden />Reminders are off – Fix</Link>}
+    <HomeContent key={retry} now={now} today={today} selected={selected} select={select} overdue={overdue}
+      budget={budget} retry={() => setRetry(count => count + 1)} />
   </div>
+}
+
+function HomeContent({ now, today, selected, select, overdue, budget, retry }: HomeProps & { budget?: BudgetState; retry: () => void }) {
+  const { preferences } = useTheme()
+  const actions = useTaskActions()
+  const [dialog, setDialog] = useState<'task' | 'quick' | TaskRow | { kind: 'expenses' | 'incomes'; id?: string }>()
+  const [hiddenAmounts, setHiddenAmounts] = useState(() => localStorage.getItem('tidyberrie-home-hide-amounts') === 'true')
+  const week = visibleWindow('Week', selected, preferences?.weekStart ?? 1)
+  const data = useCalendarData(week)
+  const day = data.days.get(selected) ?? emptyDay
+  const currentDay = data.days.get(today) ?? emptyDay
+  const isToday = selected === today
+  const open = useMemo(() => openPlan(day.rows), [day.rows])
+  const upcoming = useMemo(() => {
+    const dates = { from: addDays(selected, 1), through: addDays(selected, 3) }
+    const rows = [...summarizeTasks(data.groups, dates).entries()].flatMap(([date, day]) =>
+      day.rows.filter(({ value }) => value.status !== 'done').map(row => ({ date, label: row.value.title, row })))
+    const bills = (budget?.model?.upcoming ?? []).map(bill => ({ date: bill.date, label: bill.category, bill }))
+    return [...rows, ...bills].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5)
+  }, [data.groups, selected, budget?.model?.upcoming])
+  const close = () => setDialog(undefined)
+  const month = dateLabel(selected, { month: 'long', year: 'numeric' })
+  const allDone = day.rows.length > 0 && !open.length
+  const openBill = (id: string) => setDialog({ kind: 'expenses', id })
+  const openQuick = () => setDialog(features.budget ? 'quick' : 'task')
+  return <>
+    <section className="home-card home-greeting">
+      <Avatar mood={currentDay.rows.length > 0 && currentDay.done === currentDay.rows.length ? 'all' : overdue >= 3 ? 'overdue' : 'none'}
+        evening={now.getHours() >= 21 || now.getHours() < 6} />
+      <div><h2>{greeting(now.getHours())}, {preferences?.yourName ?? 'Cha'}!</h2>
+        <p className="home-quote">{dailyQuote(today)}</p><time dateTime={today}>{dateLabel(today, { ...brief, weekday: 'long' })}</time>
+      </div>
+    </section>
+
+    <section className="home-card home-week" aria-label="Week strip">
+      <div className="home-heading">
+        <button className="icon-button" type="button" aria-label="Previous week" onClick={() => select(addDays(selected, -7))}><ChevronLeft aria-hidden size={20} /></button>
+        <h2>{features.calendar ? <Link to="/calendar">{month}</Link> : month}</h2>
+        {!isToday && <button className="secondary home-today" onClick={() => select(today)}>Today</button>}
+        <button className="icon-button" type="button" aria-label="Next week" onClick={() => select(addDays(selected, 7))}><ChevronRight aria-hidden size={20} /></button>
+      </div>
+      <div className="home-days">{windowDates(week).map(date => {
+        const summary = data.days.get(date) ?? emptyDay
+        const current = date === today
+        const count = summary.rows.length
+        const number = Number(date.slice(-2))
+        const name = dateLabel(date, { weekday: preferences?.textSize && preferences.textSize >= 150 ? 'narrow' : 'short' })
+        return <button type="button" key={date} aria-pressed={date === selected} aria-current={current ? 'date' : undefined}
+
+          onClick={() => select(date)}>
+          <span>{name}</span>
+          <strong>{number}</strong>
+          <span className="home-dots" aria-hidden>{summary.colors.map((color, index) => <i key={index} className={'task-color-' + color} />)}</span>
+          {current && <small>Today</small>}
+          <span className="sr-only">{dateLabel(date, { weekday: 'long', month: 'long', day: 'numeric' })}, {count} {count === 1 ? 'task' : 'tasks'}</span>
+        </button>
+      })}</div>
+    </section>
+
+    <section className="home-card home-plan">
+      <div className="home-heading">
+        <h2>{isToday ? 'Today’s Plan' : 'Plan for ' + dateLabel(selected, brief)}</h2>
+        {isToday && overdue > 0 && <Link className="secondary" to="/tasks?list=Overdue"><CircleAlert aria-hidden size={16} />{overdue} overdue</Link>}
+        {!isToday && <button className="secondary" onClick={() => select(today)}>Back to today</button>}
+      </div>
+      {data.loading ? <div className="home-skeleton" role="status" aria-label="Loading tasks" /> : data.error ?
+        <div role="alert"><p>Could not load tasks.</p><button className="secondary" onClick={retry}>Retry</button></div> : <>
+          <label className="home-progress"><span>{day.done} of {day.rows.length} done</span>
+            <progress max={Math.max(1, day.rows.length)} value={day.done} /></label>
+          {!day.rows.length && <div className="planner-empty">
+            <EmptyIllustration icon={ListTodo} sticker="check" />
+            <p>{isToday ? 'Nothing planned today' : 'Nothing planned for this day'}</p>
+            <button className="primary" onClick={() => setDialog('task')}>Add a task</button>
+          </div>}
+          {allDone && <div className="planner-empty"><EmptyIllustration icon={PartyPopper} sticker="celebration" />
+            <p>All done! Enjoy your day</p></div>}
+          {open.slice(0, 3).map((row, index) => {
+            const { value, group, occurrence } = row
+            const next = isToday && index === 0
+            return <article key={group.task.id + '/' + (occurrence ?? '')} className={'home-task task-color-' + value.color}>
+              <button className="icon-button home-check" type="button" role="checkbox" aria-checked={false} aria-label={'Complete ' + value.title}
+                disabled={actions.busy} onClick={() => void actions.check(group.task.id, occurrence, true)}><Check aria-hidden size={19} /></button>
+              <button type="button" className="home-task-body" onClick={() => setDialog(row)}>
+                {next && <span className="home-next">Next up · {relativeTime(value.startTime, now)}</span>}
+                <span className="home-task-title"><TaskIcon name={value.icon} size={18} /><strong>{value.title}</strong></span>
+                <span className="home-task-meta">
+                  {value.startTime ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h' })
+                    .format(new Date('2000-01-01T' + value.startTime)) : value.allDay ? 'All day' : 'Any time'}
+                  {value.subtasks.length > 0 && <> · {value.subtasks.filter(task => task.done).length}/{value.subtasks.length}</>}
+                  {(value.reminders.length > 0 || value.subtasks.some(task => task.reminder !== undefined)) &&
+                    <AlarmClock role="img" aria-label="Reminder set" size={16} />}
+                </span>
+              </button>
+            </article>
+          })}
+          {open.length > 3 && <Link className="secondary settings-link" to={'/tasks?list=' + (isToday ? 'Today' : 'Upcoming')}>
+            Show {open.length - 3} more</Link>}
+        </>}
+    </section>
+
+    {budget && <HomeBudgetSummary today={today} budget={budget} openBill={openBill} hidden={hiddenAmounts} toggle={() => {
+      setHiddenAmounts(!hiddenAmounts)
+      localStorage.setItem('tidyberrie-home-hide-amounts', String(!hiddenAmounts))
+    }} />}
+    {upcoming.length > 0 && <section className="home-card"><h2>Coming up</h2>
+      {upcoming.map((item, index) => <BillLine key={item.date + '/' + index} name={item.label} date={item.date}
+        open={() => 'row' in item ? setDialog(item.row) : openBill(item.bill.id)} />)}
+    </section>}
+
+    <PlannerAddButton open={openQuick} label={features.budget ? 'Quick add' : 'Add task'} />
+    {dialog === 'task' && <QuickAdd draft={{ date: selected }} close={close} />}
+    {dialog === 'quick' && <TaskDialog title="Quick add" close={close}>
+      <div className="home-quick-actions">
+        <button className="primary" onClick={() => setDialog('task')}>New task</button>
+        <button className="secondary" onClick={() => setDialog({ kind: 'expenses' })}>New expense</button>
+        <button className="secondary" onClick={() => setDialog({ kind: 'incomes' })}>New income</button>
+      </div>
+    </TaskDialog>}
+    {typeof dialog === 'object' && 'group' in dialog && <TaskForm
+      initial={dialog.occurrence ? { ...dialog.value, repeat: defaultRepeat } : dialog.value}
+      title="Task details" occurrence={!!dialog.occurrence} busy={actions.busy} close={close}
+      save={value => void actions.save(value, preferences?.weekStart ?? 1, dialog.group.task.id, dialog.occurrence, close)} />}
+    {typeof dialog === 'object' && 'kind' in dialog && budget && <BudgetQuickEditor selection={dialog} data={budget.data} today={selected} close={close} />}
+  </>
 }

@@ -55,6 +55,8 @@ export const recordSchemas = {
   settings: base.extend({
     key: z.enum(['preferences', 'undo-demo']), theme: z.enum(themes), storagePersistent: z.boolean().nullable(),
     budgetView: z.enum(['daily', 'monthly', 'yearly']), avatar: text, currency: z.literal('PHP'),
+    yourName: z.string().trim().min(1).max(40).optional(), timeFormat: z.enum(['12h', '24h']).optional(),
+    textSize: z.literal([100, 125, 150, 200]).optional(),
     weekStart: z.int().min(0).max(6), dashboardCards: z.array(text), backupReminder,
     budgetConfigured: z.boolean().optional(), budgetCards: budgetCardsSchema.optional(),
     budgetHorizon: z.enum(['month','sahod']).optional(),

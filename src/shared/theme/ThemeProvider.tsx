@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { initializeSettings, setTheme, setWeekStart } from '../../features/settings/service'
+import { initializeSettings, setAppearance, setTheme, setWeekStart } from '../../features/settings/service'
 import { applyTheme } from './tokens'
 import type { Theme } from './tokens'
 
@@ -9,6 +9,7 @@ type ThemeState = {
   preferences?: Preferences
   error: boolean
   refresh: () => Promise<void>
+  chooseAppearance: (input: unknown) => Promise<void>
   chooseTheme: (theme: Theme) => Promise<void>
   chooseWeekStart: (weekStart: number) => Promise<void>
 }
@@ -39,7 +40,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (preferences) applyTheme(preferences.theme)
+    if (preferences) {
+      applyTheme(preferences.theme)
+      document.documentElement.dataset.textSize = String(preferences.textSize ?? 100)
+    }
   }, [preferences])
 
   async function chooseTheme(theme: Theme) {
@@ -50,5 +54,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     if (preferences) setPreferences(await setWeekStart(preferences.id, weekStart))
   }
 
-  return <ThemeContext.Provider value={{ preferences, error, refresh, chooseTheme, chooseWeekStart }}>{children}</ThemeContext.Provider>
+  async function chooseAppearance(input: unknown) {
+    if (preferences) setPreferences(await setAppearance(preferences.id, input))
+  }
+
+  return <ThemeContext.Provider value={{ preferences, error, refresh, chooseAppearance, chooseTheme, chooseWeekStart }}>{children}</ThemeContext.Provider>
 }

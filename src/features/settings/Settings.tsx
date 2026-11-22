@@ -1,16 +1,13 @@
 import { features } from '../../app/features'
+import { DayThemeSettings } from '../dayTheme/DayThemeSettings'
 import { useEffect, useState } from 'react'
 import { Database, Palette } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { DayThemeSettings } from '../dayTheme/DayThemeSettings'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { themes } from '../../shared/theme/tokens'
 import { useToast } from '../../shared/ui/Toast'
-import { LockSettings } from './AppLock'
-import { BackupSettings } from './BackupSettings'
 
-export function Settings() {
-  const { preferences, chooseTheme, chooseWeekStart, error } = useTheme()
+export function Appearance() {
+  const { preferences, chooseTheme, chooseWeekStart, chooseAppearance, error } = useTheme()
   const show = useToast()
   const [choosing, setChoosing] = useState(false)
 
@@ -46,22 +43,27 @@ export function Settings() {
         {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) =>
           <option key={day} value={index}>{day}</option>)}
       </select>
+      <form key={preferences?.yourName} onSubmit={event => {
+        event.preventDefault()
+        const value = new FormData(event.currentTarget).get('name')
+        void chooseAppearance({ yourName: value }).catch(() => show({ message: 'Enter a name of up to 40 characters.' }))
+      }}>
+        <label>Your name<input name="name" required maxLength={40} defaultValue={preferences?.yourName ?? 'Cha'} /></label>
+        <button className="secondary" disabled={!preferences}>Save name</button>
+      </form>
+      <label>Time format<select value={preferences?.timeFormat ?? '12h'} disabled={!preferences} onChange={event => {
+        void chooseAppearance({ timeFormat: event.target.value }).catch(() => show({ message: 'Could not save time format.' }))
+      }}><option value="12h">12-hour</option><option value="24h">24-hour</option></select></label>
+      <label>Text size<select value={preferences?.textSize ?? 100} disabled={!preferences} onChange={event => {
+        void chooseAppearance({ textSize: Number(event.target.value) }).catch(() => show({ message: 'Could not save text size.' }))
+      }}>{[100, 125, 150, 200].map(size => <option key={size} value={size}>{size}%</option>)}</select></label>
     </section>
     <section className="settings-card">
       <h2><Database size={20} /> Device storage</h2>
       <p>{error ? 'Storage is unavailable.' : !preferences ? 'Checking storage…' : preferences.storagePersistent
         ? 'Persistent storage granted.' : 'Persistent storage was not granted. Keep a backup in case the browser clears local data.'}</p>
     </section>
-    <BackupSettings />
-    <LockSettings />
+
     {features.dayTheme && <DayThemeSettings />}
-    <section className="settings-card wide">
-      <h2>Reminders</h2>
-      <Link className="secondary settings-link" to="/settings/reminders">Open reminder settings</Link>
-    </section>
-    {features.tasks && <section className="settings-card wide">
-      <h2>Task Trash</h2>
-      <Link className="secondary settings-link" to="/tasks?trash">Open task Trash</Link>
-    </section>}
   </div>
 }

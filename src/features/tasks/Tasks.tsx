@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, ListTodo, Plus, Search } from 'lucide-react'
+import { ListTodo, Plus, Search } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
@@ -39,10 +39,11 @@ function useClock() {
   return now
 }
 
-export function Tasks() {
+export function Tasks({ trash = false }: { trash?: boolean } = {}) {
   const [params] = useSearchParams()
-  const initial = params.get('list') === 'Overdue' ? 'Overdue' : 'Today'
-  return <TaskView key={params.has('trash') ? 'trash' : initial} trash={params.has('trash')} initial={initial} />
+  const requested = params.get('list')
+  const initial = requested === 'Overdue' || requested === 'Upcoming' ? requested : 'Today'
+  return <TaskView key={trash ? 'trash' : initial} trash={trash} initial={initial} />
 }
 
 function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
@@ -105,7 +106,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
 
   return <div className="tasks-view">
     <div className="tasks-toolbar">
-      {trash ? <Link className="secondary" to="/tasks">Back to tasks</Link> : <Link className="secondary" to="/tasks?trash"><Archive size={18} aria-hidden /> Trash</Link>}
+      {trash && <Link className="secondary" to="/tasks">Back to tasks</Link>}
       {import.meta.env.DEV && !trash && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
         void actions.seed(weekStart, () => { setList('All'); setPage(0) })
       }}>Development: seed 1,000 tasks</button>}

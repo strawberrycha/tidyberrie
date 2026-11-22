@@ -25,6 +25,7 @@ test('completes a single repeat and restores the series from Trash', async ({ pa
   await expect(page.getByRole('button', { name: 'Reopen Water the plants' })).toBeVisible()
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
   await page.getByRole('button', { name: 'All occurrences' }).click()
+  await page.getByRole('link', { name: 'More', exact: true }).click()
   await page.getByRole('link', { name: 'Trash', exact: true }).click()
   await page.getByRole('button', { name: 'Restore', exact: true }).click()
   await page.getByRole('link', { name: 'Back to tasks' }).click()
@@ -68,11 +69,12 @@ test('exports, previews, and replaces a backup, then keeps the task and theme on
   await page.goto('/tasks')
   await addRepeatingTask(page)
   await page.getByRole('heading', { name: 'Water the plants' }).waitFor()
-  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await page.goto('/more/appearance')
   await page.getByLabel('Theme', { exact: true }).selectOption('sakura')
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sakura')
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sakura')
+  await page.goto('/more/backups')
   const pending = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export JSON', exact: true }).click()
   const file = await (await pending).path()
@@ -89,7 +91,7 @@ test('exports, previews, and replaces a backup, then keeps the task and theme on
 })
 
 test('PIN gate survives reload and unlocks locally', async ({ page }) => {
-  await page.goto('/settings')
+  await page.goto('/more/security')
   await page.getByLabel('PIN (6–12 digits)').fill('135791')
   await page.getByLabel('Confirm PIN').fill('135791')
   await page.getByRole('button', { name: 'Save App Lock' }).click()
@@ -99,18 +101,18 @@ test('PIN gate survives reload and unlocks locally', async ({ page }) => {
   await expect(page.getByRole('navigation')).toBeHidden()
   await page.getByLabel('PIN', { exact: true }).fill('135791')
   await page.getByRole('button', { name: 'Unlock' }).click()
-  await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Security', exact: true })).toBeVisible()
 })
 
 test('Axe and 200% text scaling across screens in both themes', async ({ page }) => {
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/budget')
-  await page.goto('/settings')
+  await page.goto('/more/appearance')
   for (const theme of ['strawberry', 'sakura']) {
     await page.getByLabel('Theme', { exact: true }).selectOption(theme)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
-    for (const route of ['/settings', '/', '/tasks', '/calendar', '/budget', '/budget/extras', '/budget/summary', '/settings/reminders']) {
+    for (const route of ['/more', '/more/appearance', '/more/backups', '/', '/tasks', '/calendar', '/budget', '/budget/extras', '/budget/summary', '/more/reminders']) {
       await page.goto(route)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
@@ -120,7 +122,7 @@ test('Axe and 200% text scaling across screens in both themes', async ({ page })
       await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
       expect.soft(await page.evaluate(() => document.documentElement.scrollWidth), route + ' at 200%').toBeLessThanOrEqual(390)
     }
-    await page.goto('/settings')
+    await page.goto('/more/appearance')
   }
 })
 
@@ -156,21 +158,21 @@ test('reserved palettes meet text, focus and control contrast targets', async ({
 })
 
 test('restores a daily snapshot and recovers from the safety snapshot', async ({ page }) => {
-  await page.goto('/settings')
+  await page.goto('/more/backups')
   const daily = page.locator('#backups details').first()
   await daily.locator('summary').click()
   await expect(daily).toContainText('tasks: 0')
   await page.getByRole('link', { name: 'Tasks', exact: true }).click()
   await addRepeatingTask(page)
   await expect(page.getByRole('heading', { name: 'Water the plants' })).toBeVisible()
-  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await page.goto('/more/backups')
   await daily.locator('summary').click()
   await daily.getByRole('button', { name: /^Restore / }).click()
   await page.getByRole('button', { name: 'Confirm restore' }).click()
   await expect(page.getByText(/Safety snapshot ·/)).toBeVisible()
   await page.getByRole('link', { name: 'Tasks', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'No tasks to show' })).toBeVisible()
-  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await page.goto('/more/backups')
   await page.getByText(/Safety snapshot ·/).click()
   await page.getByRole('button', { name: 'Restore Safety snapshot' }).click()
   await page.getByRole('button', { name: 'Confirm restore' }).click()
@@ -188,7 +190,7 @@ test('keeps hidden-module records when restoring the Calendar, Budget and Day Th
     body: 'export const features = { tasks: true, home: true, calendar: false, budget: false, dayTheme: false }',
   }))
 
-  await page.goto(enabledOrigin + '/settings')
+  await page.goto(enabledOrigin + '/more/appearance')
   await expect(page.getByRole('heading', { name: 'Day Themes' })).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: 'Add custom theme' }).click()
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Preserved theme')
@@ -212,10 +214,10 @@ test('keeps hidden-module records when restoring the Calendar, Budget and Day Th
   await page.goto(enabledOrigin + '/budget/extras')
   await expect(page).toHaveURL(/\/budget$/)
   await expect(page.getByText('Budget is coming soon.')).toBeVisible()
-  await page.getByRole('link', { name: 'Settings', exact: true }).click()
+  await page.goto(enabledOrigin + '/more/appearance')
   await expect(page.getByRole('heading', { name: 'Day Themes' })).toHaveCount(0)
   enabled = true
 
-  await page.goto(enabledOrigin + '/settings')
+  await page.goto(enabledOrigin + '/more/appearance')
   await expect(page.getByRole('listitem').getByText('Preserved theme', { exact: true })).toBeVisible()
 })
