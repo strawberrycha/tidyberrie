@@ -15,7 +15,7 @@ import { ScreenBoundary } from '../shared/ui/ScreenBoundary'
 import { useToast } from '../shared/ui/Toast'
 
 const Tasks = lazy(() => import('../features/tasks/Tasks').then(m => ({ default: m.Tasks })))
-const Home = lazy(() => import('../features/dayTheme/Home').then(m => ({ default: m.Home })))
+const Home = lazy(() => import('../features/home/Home').then(m => ({ default: m.Home })))
 const Calendar = lazy(() => import('../features/calendar/Calendar').then(m => ({ default: m.Calendar })))
 const Budget = lazy(() => import('../features/budget/Budget').then(m => ({ default: m.Budget })))
 const BudgetExtras = lazy(() => import('../features/budget/BudgetExtras').then(m => ({ default: m.BudgetExtras })))

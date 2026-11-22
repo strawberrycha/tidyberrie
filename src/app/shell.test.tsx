@@ -21,7 +21,7 @@ vi.mock('@capacitor/app', () => ({ App: { exitApp: bridge.exitApp, addListener: 
 } } }))
 vi.mock('../features/settings/AppLock', () => ({ LockSettings: () => <p>Lock settings</p> }))
 vi.mock('../features/settings/BackupNudge', () => ({ BackupNudge: () => null }))
-vi.mock('../features/dayTheme/Home', () => ({ Home: () => <h1>Home fixture</h1> }))
+vi.mock('../features/home/Home', () => ({ Home: () => <h1>Home fixture</h1> }))
 vi.mock('../features/tasks/Tasks', () => ({
   Tasks: function TaskFixture() {
     const [value, setValue] = useState('')
