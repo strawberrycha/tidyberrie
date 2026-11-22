@@ -21,17 +21,56 @@ All required setup tools are available. App scaffolding, a package manifest, and
 
 The existing `design-source/` reference assets are outside the documentation commit.
 
-## Verify from PowerShell
+## Verify the initial documentation commit from PowerShell
 
 ```powershell
 node -v
 npm -v
 git --version
 git status --short
-git log -1 --oneline
-git rev-list --count HEAD
-git show --format= --name-only HEAD
-git show --check HEAD
+git show --oneline --name-only a07caf0
+git show --check a07caf0
 ```
 
-Expect one commit named `chore: add project rules, plan, and design docs`, containing the six files listed above. `git status --short` may report the existing untracked `design-source/` directory.
+The initial commit is named `chore: add project rules, plan, and design docs` and contains the six files listed above. `git status --short` may report the existing untracked `design-source/` directory.
+
+## Phase 1 foundation
+
+- `package.json`, `package-lock.json`, `index.html`, and the Vite, TypeScript, and ESLint configs define the pinned toolchain, scripts, manifest, and production CSP.
+- `src/features/` contains the route placeholders and Settings controls. `src/shared/` contains theme and toast providers, PWA status, the Dexie migrations, repositories, import validation, snapshots, integer-centavo utilities, and seven foundation tests.
+- `public/` contains placeholder PNG icons at 192px and 512px, including a maskable 512px icon. Existing `design-source/` assets remain untouched.
+
+### Run and verify
+
+```powershell
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173` for development. Stop with Ctrl+C.
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run preview -- --port 4173 --strictPort
+```
+
+Open `http://localhost:4173` for PWA verification. Wait for “Ready to work offline.” In Chrome DevTools, confirm the active worker under Application → Service Workers. Set Network to Offline and reload a route such as `/calendar`. If Chrome offers installation, install the app and repeat the check from the installed app. Restore network access and stop preview with Ctrl+C.
+
+The Phase 1 run passed lint, typecheck, all seven Vitest tests, and the production build. Headless Chrome verified service-worker control on first load, the initial system-dark preference, saved theme selection, Undo, 44px desktop navigation targets, keyboard focus on the skip link, the 390px phone layout, and a direct Calendar load with the network disabled.
+
+### Android installation and airplane-mode test
+
+1. Start the production preview on port 4173 using the command above. On Android, enable Developer options and USB debugging, connect the phone over USB, and accept the debugging prompt.
+2. Open `chrome://inspect/#devices` on laptop Chrome. Enable Discover USB devices. In Port forwarding, map Android port `4173` to laptop `localhost:4173` and enable port forwarding. [Chrome USB port forwarding guide](https://developer.chrome.com/docs/devtools/remote-debugging/local-server/)
+3. Visit `http://localhost:4173` in Chrome on the phone. Wait for the offline-ready message, then use Chrome's Install app or Add to Home screen option.
+4. Unplug USB, enable airplane mode, and reopen from the launcher. Open Calendar and Settings. Change the theme, close and reopen the app, and confirm the choice persists. Try the Undo sample.
+5. For an HTTPS alternative, serve `dist/` from the root of an HTTPS static host with SPA fallback to `index.html` for non-file routes. Serve `sw.js` and static assets as files. Set a same-origin CSP response header matching the preview policy in `vite.config.ts` to enforce `frame-ancestors`. Visit the HTTPS origin on Android and repeat the install and airplane-mode test. Storage is separate for each origin.
+
+### Audit and limitations
+
+`npm audit` reported four moderate findings through `vite-plugin-pwa → workbox-build → glob/minimatch`. npm proposes a breaking downgrade with `npm audit fix --force`. The pinned toolchain was retained. `npm audit --omit=dev --offline` reported zero production dependency findings.
+
+Backups are unencrypted JSON in Phase 1. An export above the 10 MiB import limit cannot be reimported in this phase. Local snapshots share the browser's storage with live data and are captured once per local day while the app is open. Real Android and laptop installation checks remain manual.
