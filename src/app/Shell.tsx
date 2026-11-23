@@ -105,6 +105,7 @@ export function Shell() {
   }, [active, location])
 
   useLayoutEffect(() => {
+    if (active !== 'tasks') window.dispatchEvent(new Event('tidyberrie-task-tab-leave'))
     const panel = panels.current[active]
     if (panel) panel.scrollTop = scroll.current.get(url(location)) ?? 0
   }, [active, location])

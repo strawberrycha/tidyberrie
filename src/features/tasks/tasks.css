@@ -69,6 +69,26 @@
 .task-date-chips button span { display: grid; place-items: center; min-height: 40px; padding-inline: var(--space-2); border-radius: var(--pill); background: var(--surface); }
 .task-date-chips button[aria-pressed="true"] span { background: var(--soft); color: var(--primary); outline: 1px solid currentColor; outline-offset: -1px; }
 
+.task-gesture { position: relative; overflow: clip; border-radius: var(--card-radius); }
+.task-gesture[data-swipe-enabled="true"] { touch-action: pan-y; }
+.task-gesture > article { position: relative; }
+.task-swipe-reveal {
+  position: absolute; inset: 0; display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-4); background: var(--soft); color: var(--text);
+}
+.task-swipe-reveal[data-direction="left"] { justify-content: end; }
+.task-selection-check { display: grid; place-items: center; min-width: var(--touch); min-height: var(--touch); cursor: pointer; }
+.task-card[aria-selected="true"] { outline: var(--outline) solid var(--primary); outline-offset: calc(-1 * var(--outline)); }
+.task-selection-bar {
+  position: fixed; z-index: 4; inset: auto 0 0; display: flex; align-items: start; gap: var(--space-2);
+  overflow-x: auto; padding: var(--space-2) var(--space-4) max(var(--space-2), env(safe-area-inset-bottom));
+  background: var(--surface); border-top: var(--hairline) solid var(--border);
+}
+.task-selection-bar > button { flex: none; min-height: var(--touch); }
+@media (prefers-reduced-motion: no-preference) {
+  .task-gesture[data-dragging="false"] > article { transition: transform var(--press-duration) ease-out; }
+}
+
 :root {
   --task-rose: var(--accent-1); --task-blush: var(--accent-2); --task-peach: var(--soft); --task-berry: var(--accent-3);
   --task-lavender: #d9c7f0; --task-mint: #a8cdb4; --task-honey: #e8c9a0; --task-sky: #b4d4ed;

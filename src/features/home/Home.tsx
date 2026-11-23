@@ -146,7 +146,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
           {open.slice(0, 3).map((row, index) => {
             const { value, group, occurrence } = row
             const next = isToday && index === 0
-            return <article key={group.task.id + '/' + (occurrence ?? '')} className={'home-task task-color-' + value.color}>
+            return <article key={group.task.id + '/' + (occurrence ?? '')} className={'home-task task-color-' + (value.color || 'rose')}>
               <button className="icon-button home-check" type="button" role="checkbox" aria-checked={false} aria-label={'Complete ' + value.title}
                 disabled={actions.busy} onClick={() => void actions.check(group.task.id, occurrence, true)}><Check aria-hidden size={19} /></button>
               <button type="button" className="home-task-body" onClick={() => setDialog(row)}>

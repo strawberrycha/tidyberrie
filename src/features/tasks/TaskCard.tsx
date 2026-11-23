@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowUp, Check, CircleAlert, Ellipsis, Minus, Pin, Repeat2, RotateCcw } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, CalendarArrowDown, CircleAlert, Ellipsis, Minus, Pin, Repeat2, RotateCcw } from 'lucide-react'
+import { useTaskGesture } from './useTaskGesture'
 import { inlineIconSize } from '../../app/uiTokens'
 import { useId, useState } from 'react'
 import { TaskIcon } from './icons'
@@ -11,9 +12,10 @@ import { localDate } from './recurrence'
 
 const priorityIcons = { low: ArrowDown, medium: Minus, high: ArrowUp }
 
-export function TaskCard({ row, now, canComplete, disabled, edit, remove, check, category, menu }: {
+export function TaskCard({ row, now, canComplete, disabled, edit, remove, check, category, menu, selection, select, swipe, move }: {
   category?: Records['categories']; row: TaskRow; now: Date; canComplete: boolean; disabled: boolean; edit?: () => void; remove?: () => void;
-  check: (done: boolean, subtaskId?: string) => void; menu?: () => void
+  check: (done: boolean, subtaskId?: string) => void; menu?: () => void;
+  selection?: boolean; select?: () => void; swipe?: (action: 'done' | 'reschedule') => void; move?: (days: number) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const panel = useId()
@@ -23,7 +25,19 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
   const date = localDate(now)
   const time = [now.getHours(), now.getMinutes()].map(unit => String(unit).padStart(2, '0')).join(':')
   const Priority = priorityIcons[value.priority]
-  return <article className={'task-card task-color-' + (value.color || (category && !category.archived ? category.color : 'rose'))} data-complete={done}>
+  const { drag, consumeClick, ...gesture } = useTaskGesture({ disabled: disabled || selection !== undefined || expanded || !select, select, swipe })
+  const Reveal = drag > 0 ? done ? RotateCcw : Check : CalendarArrowDown
+  return <div className="task-gesture" data-swipe-enabled={!!swipe && selection === undefined && !expanded} data-dragging={drag !== 0}
+    {...gesture} onClick={event => {
+      if (consumeClick()) { event.preventDefault(); return }
+      if (selection !== undefined && !(event.target as Element).closest('label, input')) select?.()
+    }}>
+    {drag !== 0 && <div className="task-swipe-reveal" data-direction={drag > 0 ? 'right' : 'left'} aria-hidden>
+      <Reveal size={inlineIconSize} /> {drag > 0 ? done ? 'To do' : 'Done' : 'Reschedule'}
+    </div>}
+    <article style={drag ? { transform: 'translateX(' + drag + 'px)' } : undefined}
+      role={selection === undefined ? undefined : 'row'} aria-selected={selection} className={'task-card task-color-' + (value.color || (category && !category.archived ? category.color : 'rose'))} data-complete={done}>
+    <div role={selection === undefined ? undefined : 'gridcell'}>
     <div className="task-card-heading">
       <span className="task-glyph"><TaskIcon name={category?.icon ?? value.icon} /></span>
       <div>
@@ -31,7 +45,9 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
         <p><time dateTime={value.startDate}>{value.startDate}</time>{value.allDay ? ' · All day' : value.startTime
           ? ' · ' + value.startTime + (value.endTime ? '–' + value.endTime : '') : ''}</p>
       </div>
-      {canComplete && <button className="icon-button task-complete" type="button" disabled={disabled}
+      {selection !== undefined && <label className="task-selection-check"><input type="checkbox" aria-label={'Select ' + value.title}
+        checked={selection} onChange={select} /></label>}
+      {selection === undefined && canComplete && <button className="icon-button task-complete" type="button" disabled={disabled}
         aria-label={done ? 'Reopen ' + value.title : 'Complete ' + value.title} onClick={() => check(!done)}>
         {done ? <RotateCcw size={20} aria-hidden /> : <Check size={20} aria-hidden />}
       </button>}
@@ -51,7 +67,7 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
       {value.tag && <span className="task-chip">{value.tag}</span>}
     </div>
     {value.description && <p className="task-description">{value.description}</p>}
-    {!!count.total && <div className="task-progress">
+    {selection === undefined && !!count.total && <div className="task-progress">
       <label className="task-progress-label"><span>Subtasks {count.done}/{count.total}</span><progress value={count.done} max={count.total} /></label>
       <button className="secondary" type="button" aria-expanded={expanded} aria-controls={panel} onClick={() => setExpanded(!expanded)}>{expanded ? 'Hide subtasks' : 'Show subtasks'}</button>
       <ul id={panel} hidden={!expanded}>{value.subtasks.map(item => <li key={item.id}>
@@ -60,10 +76,15 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
         </label>
       </li>)}</ul>
     </div>}
-    {(edit || remove || menu) && <div className="task-actions">
+    {selection === undefined && move && <div className="task-actions">{['Today', 'Tomorrow'].map((name, index) =>
+      <button className="secondary" key={name} type="button" disabled={disabled} onClick={() => move(index)}>
+        <CalendarArrowDown size={inlineIconSize} aria-hidden /> {name}</button>)}</div>}
+    {selection === undefined && (edit || remove || menu) && <div className="task-actions">
       {edit && <button className="secondary" type="button" disabled={disabled} onClick={edit}>Edit</button>}
       {menu && <button className="icon-button" type="button" aria-label={'Actions for ' + value.title} disabled={disabled} onClick={menu}><Ellipsis aria-hidden /></button>}
       {remove && <button className="secondary" type="button" disabled={disabled} onClick={remove}>Delete</button>}
     </div>}
-  </article>
+    </div>
+    </article>
+  </div>
 }

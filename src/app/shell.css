@@ -3,6 +3,8 @@
 .reminder-help summary { min-height: var(--touch); cursor: pointer; }
 .tab-panel { flex: 1; min-height: 0; overflow-y: auto; padding: 0 max(var(--space-4), env(safe-area-inset-right)) calc(var(--actual-tab-height, var(--default-tab-height)) + var(--fab-size) + var(--space-4) + env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left)); }
 .tab-panel[hidden] { display: none; }
+.phone-shell:has(.tab-panel:not([hidden]) [data-task-selection]) .phone-tabs { display: none; }
+.phone-shell:has(.tab-panel:not([hidden]) [data-task-selection]) .tab-panel { padding-bottom: calc(var(--touch) + var(--space-8) + env(safe-area-inset-bottom)); }
 .phone-tabs { position: relative; z-index: 4; flex: none; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); background: var(--surface); border-top: var(--hairline) solid var(--border); padding: var(--space-1) max(var(--space-1), env(safe-area-inset-right)) max(var(--space-1), env(safe-area-inset-bottom)) max(var(--space-1), env(safe-area-inset-left)); }
 .phone-tabs a { min-height: var(--app-bar-height); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: var(--caption); line-height: 1.2; padding: var(--outline); text-align: center; color: var(--text-muted); overflow-wrap: anywhere; }
 .phone-tabs a[aria-current] { color: var(--text); font-weight: 800; }

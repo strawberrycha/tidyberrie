@@ -21,10 +21,11 @@ export function useTaskSearch(query: string) {
   return query ? delayed : ''
 }
 
-export function TaskControls({ list, select, query, setQuery, filters, apply, sort, setSort, overdue, categories = [], grouped, setGrouped }: {
+export function TaskControls({ list, select, query, setQuery, filters, apply, sort, setSort, overdue, categories = [], grouped, setGrouped, selection }: {
   list: SmartList; select: (list: SmartList) => void; query: string; setQuery: (query: string) => void;
   filters: Filters; apply: (next: Filters) => void; sort: string; setSort: (sort: string) => void; overdue: number
   categories?: Records['categories'][]; grouped?: boolean; setGrouped?: (value: boolean) => void
+  selection?: { count: number; clear: () => void; all: () => void }
 }) {
   const [searching, search] = useState(false)
   const [sheet, setSheet] = useState<'filter' | 'sort'>()
@@ -52,6 +53,14 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, so
     document.addEventListener('tidyberrie-back', back)
     return () => document.removeEventListener('tidyberrie-back', back)
   }, [searching, setQuery])
+
+  if (selection) return <div className="task-controls">
+    <AppBar title={selection.count + ' selected'} actions={<>
+      <button type="button" className="secondary" onClick={selection.all}>Select all</button>
+      <button type="button" className="icon-button" aria-label="Exit selection" onClick={selection.clear}><X aria-hidden /></button>
+    </>} />
+    <span className="sr-only" role="status" aria-live="polite">{selection.count} selected</span>
+  </div>
 
   return <>
     <div className="task-controls">

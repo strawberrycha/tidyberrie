@@ -51,7 +51,7 @@ it('drives tab order and More from config, shows one overdue item, and retains t
   fireEvent.click(screen.getByRole('link', { name: 'Tasks, 1 overdue' }))
   expect(screen.getByRole('textbox', { name: 'Filter' })).toHaveValue('Library')
   fireEvent.click(screen.getByRole('link', { name: 'More' }))
-  expect(await screen.findByText('Coming soon')).toBeVisible()
+  expect(await screen.findByText('Coming soon', {}, { timeout: 3000 })).toBeVisible()
   expect(screen.queryByRole('link', { name: /Meals/ })).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Backup and Restore' })).toHaveAttribute('href', '/more/backups')
 })

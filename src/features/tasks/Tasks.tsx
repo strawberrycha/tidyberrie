@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ListTodo, Plus } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CalendarArrowDown, Check, Folder, ListTodo, Plus, SkipForward, Trash2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
@@ -10,12 +10,14 @@ import type { SmartList } from './lists'
 import { taskValue } from './model'
 import type { TaskGroup, TaskRow } from './model'
 import { addDays, defaultRepeat, localDate } from './recurrence'
-import { useCategories } from './Categories'
+import { CategoryPicker, useCategories } from './Categories'
 import { TaskCard } from './TaskCard'
 import { TaskDialog } from './TaskDialog'
 import { TaskForm } from './TaskForm'
 import { useTaskActions, useTaskGroups } from './useTasks'
 import { emptyFilters, TaskControls, useTaskSearch } from './TaskControls'
+import type { BulkChange, TaskTarget } from './service'
+import { inlineIconSize } from '../../app/uiTokens'
 import { showDevelopmentTools } from '../../app/development'
 import './tasks.css'
 
@@ -29,7 +31,9 @@ const emptyMessages: Record<SmartList, string> = {
   All: 'No tasks yet',
 }
 type Editor = { id?: string; date?: string; initial: TaskInput }
-type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup } | { kind: 'actions' | 'reschedule'; row: TaskRow }
+type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup } | { kind: 'actions'; row: TaskRow } | { kind: 'bulk-date' | 'bulk-category' | 'bulk-delete' | 'move-all'; targets: TaskTarget[] }
+
+const rowKey = (row: TaskRow) => row.group.task.id + '/' + (row.occurrence ?? '')
 
 function useClock() {
   const [now, setNow] = useState(() => new Date())
@@ -65,6 +69,10 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const [overduePage, setOverduePage] = useState(0)
   const [dialog, setDialog] = useState<Dialog>()
   const [moveDate, setMoveDate] = useState('')
+  const [selected, setSelected] = useState<string[]>()
+  const [showOptional, setShowOptional] = useState(false)
+  const view = useRef<HTMLDivElement>(null)
+  const selecting = selected !== undefined && !trash
   const { groups } = state ?? {}
   const { rows: categories } = useCategories()
   const close = () => setDialog(undefined)
@@ -88,13 +96,46 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         return list === 'Completed' ? -dateOrder : dateOrder
       })
   }, [candidates, filters, list, delayedQuery, sort])
+  const selectedKeys = useMemo(() => new Set(selected), [selected])
+  const selectedRows = selected ? rows.filter(row => selectedKeys.has(rowKey(row))) : []
+  const visibleRows = list === 'Overdue' ? rows.filter(row => !row.value.optional || showOptional) : rows
+  const optionalRows = list === 'Overdue' ? rows.filter(row => row.value.optional) : []
+  const mandatoryOverdue = list === 'Overdue' ? rows.filter(row => !row.value.optional) : []
+  const clearSelection = useCallback(() => setSelected(undefined), [])
+  useEffect(() => {
+    const leave = () => clearSelection()
+    const back = (event: Event) => { if (selecting) { event.preventDefault(); clearSelection() } }
+    window.addEventListener('tidyberrie-task-tab-leave', leave)
+    document.addEventListener('tidyberrie-back', back)
+    return () => {
+      window.removeEventListener('tidyberrie-task-tab-leave', leave)
+      document.removeEventListener('tidyberrie-back', back)
+    }
+  }, [clearSelection, selecting])
+
   const trashed = useMemo(() => trash ? [...groups ?? []].sort((a, b) => b.task.deletedAt!.localeCompare(a.task.deletedAt!)) : [], [groups, trash])
-  const size = trash ? trashed.length : rows.length
+  const size = trash ? trashed.length : Math.max(visibleRows.length, optionalRows.length ? 1 : 0)
   const lastPage = Math.max(0, Math.ceil(size / PAGE_SIZE) - 1)
   const currentPage = Math.min(page, lastPage)
   const start = currentPage * PAGE_SIZE
 
   const categoryGroups = [...categories.map(item => ({ key: item.id, name: item.name })), { key: '', name: 'Uncategorized' }]
+
+  function toggle(row: TaskRow) {
+    const key = rowKey(row)
+    setSelected(previous => previous?.includes(key) ? previous.filter(id => id !== key) : [...previous ?? [], key])
+    if (!selecting) requestAnimationFrame(() => view.current?.querySelector<HTMLElement>('[aria-label="Exit selection"]')?.focus())
+  }
+  const targetsFor = (items: TaskRow[]) => items.map(row => ({ id: row.group.task.id, occurrence: actionDate(row, now) }))
+  const openDate = (items: TaskRow[]) => { setMoveDate(today); setDialog({ kind: 'bulk-date', targets: targetsFor(items) }) }
+  const applyBulk = (targets: TaskTarget[], change: BulkChange) => void actions.bulk(targets, change, () => {
+    close()
+    clearSelection()
+  })
+  const selectedTargets = targetsFor(selectedRows)
+  const unavailable = selectedRows.some((row, index) => row.group.task.repeatRule && !selectedTargets[index].occurrence)
+  const repeatingIds = new Set((groups ?? []).filter(group => group.task.repeatRule).map(group => group.task.id))
+  const openDelete = () => setDialog({ kind: 'bulk-delete', targets: selectedTargets })
 
   function edit(row: TaskRow, date?: string) {
     const value = taskValue(row.group, today, date)
@@ -112,18 +153,20 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
     })
   }
 
-  return <div className="tasks-view">
+  return <div ref={view} className="tasks-view" data-task-selection={selecting || undefined}>
     {!trash && <TaskControls list={list} select={item => { setList(item); setPage(0); setOverduePage(0) }}
       query={query} setQuery={updateQuery} filters={filters} apply={next => { setFilters(next); setPage(0) }}
-      sort={sort} setSort={next => { setSort(next); setPage(0) }} overdue={overdueCount} categories={categories} grouped={grouped} setGrouped={value => { setGrouped(value); setPage(0) }} />}
+      sort={sort} setSort={next => { setSort(next); setPage(0) }} overdue={overdueCount} categories={categories} grouped={grouped} setGrouped={value => { setGrouped(value); setPage(0) }}
+      selection={selecting ? { count: selectedRows.length, clear: clearSelection, all: () => setSelected(visibleRows.map(rowKey)) } : undefined} />}
     <div className="tasks-toolbar">
       {trash && <Link className="secondary" to="/tasks">Back to tasks</Link>}
-      {import.meta.env.DEV && showDevelopmentTools(true) && !trash && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
+      {import.meta.env.DEV && showDevelopmentTools(true) && !trash && !selecting && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
         void actions.seed(weekStart, () => { setList('All'); setPage(0) })
       }}>Development: seed 1,000 tasks</button>}
     </div>
-    {!trash && <>
+    {!trash && !selecting && <>
       {list === 'Overdue' && <div className="task-actions overdue-window">
+        {!!mandatoryOverdue.length && <button type="button" className="secondary" onClick={() => setDialog({ kind: 'move-all', targets: targetsFor(mandatoryOverdue) })}>Move all to today</button>}
         <button type="button" className="secondary" onClick={() => { setOverduePage(overduePage + 1); setPage(0) }}>Older repeats</button>
         <span>Repeats {addDays(today, -29 - overduePage * 30)} to {addDays(today, -overduePage * 30)}</span>
         {!!overduePage && <button type="button" className="secondary" onClick={() => { setOverduePage(overduePage - 1); setPage(0) }}>Newer repeats</button>}
@@ -136,7 +179,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
           (list === 'Today' || list === 'Upcoming' || list === 'All') && <button type="button" className="primary" onClick={add}>Add a task</button>}
       </section>
       : <>
-        <div className="task-grid">
+        <div className="task-grid" role={selecting ? 'grid' : undefined} aria-label={selecting ? 'Select tasks' : undefined} aria-multiselectable={selecting || undefined}>
           {trash ? trashed.slice(start, start + PAGE_SIZE).map(group => <article className="task-card" key={group.task.id}>
             <h3>{group.task.title}</h3>
             <p>Deleted {group.task.deletedAt?.slice(0, 10)}</p>
@@ -154,13 +197,32 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             return <TaskCard key={row.group.task.id + (row.occurrence ?? '')} row={displayed} category={categories.find(item => item.id === row.value.categoryId)} now={now} disabled={actions.busy} canComplete={!repeating || !!date}
               check={(done, id) => void actions.check(row.group.task.id, date, done, id)}
               menu={() => setDialog({ kind: 'actions', row })}
+              selection={selecting ? selectedKeys.has(rowKey(row)) : undefined} select={() => toggle(row)}
+              swipe={!repeating || date ? action => action === 'done'
+                ? void actions.check(row.group.task.id, date, displayed.value.status !== 'done')
+                : openDate([row]) : undefined}
+              move={list === 'Overdue' ? days => applyBulk(targetsFor([row]), { kind: 'date', date: addDays(today, days) }) : undefined}
               edit={() => repeating ? setDialog({ kind: 'edit-scope', row }) : edit(row)}
               remove={() => repeating ? setDialog({ kind: 'delete-scope', row }) : remove(row)} />
             }
-            if (!grouped) return rows.slice(start, start + PAGE_SIZE).map(renderRow)
+            if (list === 'Overdue') {
+              const current = [...mandatoryOverdue, ...(showOptional ? optionalRows : [])].slice(start, start + PAGE_SIZE)
+              return <>
+                {current.filter(row => !row.value.optional).map(renderRow)}
+                {!!optionalRows.length && <div role={selecting ? 'row' : undefined}>
+                  <div role={selecting ? 'gridcell' : undefined}>
+                    <button type="button" className="secondary" aria-expanded={showOptional} onClick={() => setShowOptional(!showOptional)}>
+                      Optional · {optionalRows.length}
+                    </button>
+                  </div>
+                </div>}
+                {current.filter(row => row.value.optional).map(renderRow)}
+              </>
+            }
+            if (!grouped || selecting) return visibleRows.slice(start, start + PAGE_SIZE).map(renderRow)
             const byCategory = (row: TaskRow) => categories.some(item => item.id === row.value.categoryId) ? row.value.categoryId : ''
             return categoryGroups.map(group => {
-              const groupRows = rows.filter(row => byCategory(row) === group.key)
+              const groupRows = visibleRows.filter(row => byCategory(row) === group.key)
               if (!groupRows.length) return null
               const hidden = collapsed.includes(group.key)
               const counted = groupRows.filter(row => row.value.status !== 'skipped')
@@ -174,13 +236,13 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             })
           })()}
         </div>
-        {!grouped && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
-        {!grouped && lastPage > 0 && <div className="task-actions">
+        {(!grouped || list === 'Overdue' || selecting) && visibleRows.length > 0 && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
+        {(!grouped || list === 'Overdue' || selecting) && lastPage > 0 && <div className="task-actions">
           <button type="button" className="secondary" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
           <button type="button" className="secondary" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next page</button>
         </div>}
       </>}
-    {!trash && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
+    {!trash && !selecting && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
     {dialog?.kind === 'edit' && <TaskForm key={dialog.editor.id ?? 'new'} initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date} editing={!!dialog.editor.id}
       busy={actions.busy} close={close} save={value => save(dialog.editor, value)}
       duplicate={dialog.editor.id ? () => void actions.duplicate(dialog.editor.id!, weekStart, (id, value) =>
@@ -205,22 +267,57 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
       const date = actionDate(row, now)
       const canChange = !row.group.task.repeatRule || !!date
       return <TaskDialog title={row.value.title} close={close}><div className="task-form">
-        <button className="secondary" disabled={!canChange} onClick={() => { void actions.check(id, date, true); close() }}>Mark done</button>
+        <button className="secondary" disabled={!canChange} onClick={() => { void actions.check(id, date, row.value.status !== 'done'); close() }}>
+          {row.value.status === 'done' ? 'Back to To do' : 'Mark done'}
+        </button>
         <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'in_progress'); close() }}>In progress</button>
         <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'skipped'); close() }}>Skip</button>
-        <button className="secondary" disabled={!canChange} onClick={() => { setMoveDate(row.value.startDate < today ? today : row.value.startDate); setDialog({ kind: 'reschedule', row }) }}>Reschedule</button>
+        <button className="secondary" disabled={!canChange} onClick={() => openDate([row])}>Reschedule</button>
+        <button className="secondary" onClick={() => { toggle(row); close() }}>Select</button>
+        <button className="secondary" onClick={() => row.group.task.repeatRule ? setDialog({ kind: 'delete-scope', row }) : remove(row)}>Delete</button>
         <button className="secondary" onClick={() => void actions.duplicate(id, weekStart, (copyId, value) =>
           setDialog({ kind: 'edit', editor: { id: copyId, initial: value } }))}>Duplicate</button>
       </div></TaskDialog>
     })()}
-    {dialog?.kind === 'reschedule' && <TaskDialog title="Reschedule task" close={close}>
+    {selecting && <div className="task-selection-bar" role="group" aria-label="Selected task actions">
+      {([
+        ['Done', Check, () => applyBulk(selectedTargets, { kind: 'done' }), unavailable],
+        ['Skip', SkipForward, () => applyBulk(selectedTargets, { kind: 'skip' }), unavailable],
+        ['Category', Folder, () => setDialog({ kind: 'bulk-category', targets: selectedTargets }), false],
+        ['Date', CalendarArrowDown, () => openDate(selectedRows), unavailable],
+        ['Delete', Trash2, openDelete, false],
+      ] as const).map(([label, Icon, run, disabled]) => <button className="secondary" key={label} disabled={actions.busy || !selectedRows.length || disabled} onClick={run}>
+        <Icon aria-hidden size={inlineIconSize} /> {label}</button>)}
+      {unavailable && <p>Choose a dated occurrence to change its status or date.</p>}
+    </div>}
+    {dialog?.kind === 'bulk-category' && <CategoryPicker rows={categories} current={null} close={close}
+      choose={categoryId => applyBulk(dialog.targets, { kind: 'category', categoryId })} />}
+    {dialog?.kind === 'bulk-date' && <TaskDialog title={dialog.targets.length === 1 ? 'Reschedule task' : 'Reschedule tasks'} close={close}>
       <form className="task-form" onSubmit={event => {
         event.preventDefault()
-        void actions.reschedule(dialog.row.group.task.id, actionDate(dialog.row, now), moveDate, close)
+        applyBulk(dialog.targets, { kind: 'date', date: moveDate })
       }}>
-        <label>Date<input type="date" required min={today} value={moveDate} onChange={event => setMoveDate(event.target.value)} /></label>
-        <button className="primary" disabled={!moveDate || moveDate < today || actions.busy}>Move task</button>
+        <div className="task-date-chips">{(['Today', 'Tomorrow', 'Next week'] as const).map((label, index) => {
+          const date = addDays(today, [0, 1, 7][index])
+          return <button className="secondary" type="button" key={label} aria-pressed={moveDate === date} onClick={() => setMoveDate(date)}><span>{label}</span></button>
+        })}</div>
+        <label>Pick date<input type="date" required min={today} value={moveDate} onChange={event => setMoveDate(event.target.value)} /></label>
+        <button className="primary" disabled={!moveDate || moveDate < today || actions.busy}>Move {dialog.targets.length === 1 ? 'task' : 'tasks'}</button>
       </form>
+    </TaskDialog>}
+    {dialog?.kind === 'move-all' && <TaskDialog title="Move overdue tasks to today?" close={close}>
+      <div className="task-form"><p>{dialog.targets.length} tasks will move to today.</p>
+        <button className="primary" disabled={actions.busy} onClick={() => applyBulk(dialog.targets, { kind: 'date', date: today })}>Move to today</button>
+      </div>
+    </TaskDialog>}
+    {dialog?.kind === 'bulk-delete' && <TaskDialog title="Delete selected tasks?" close={close}>
+      <div className="task-form"><p>{dialog.targets.length} selected. You can undo this change.</p>
+        {dialog.targets.some(target => repeatingIds.has(target.id)) ? <>
+          <button className="secondary" disabled={actions.busy || dialog.targets.some(target => repeatingIds.has(target.id) && !target.occurrence)}
+            onClick={() => applyBulk(dialog.targets, { kind: 'delete', scope: 'occurrence' })}>This occurrence only</button>
+          <button className="secondary" disabled={actions.busy} onClick={() => applyBulk(dialog.targets, { kind: 'delete', scope: 'series' })}>Whole series</button>
+        </> : <button className="primary" disabled={actions.busy} onClick={() => applyBulk(dialog.targets, { kind: 'delete', scope: 'series' })}>Delete selected</button>}
+      </div>
     </TaskDialog>}
     {dialog?.kind === 'permanent' && <TaskDialog title="Delete task permanently?" close={close}>
       <div className="task-form"><p>“{dialog.group.task.title}” and its subtasks will be permanently deleted.</p>

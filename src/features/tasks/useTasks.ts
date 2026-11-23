@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useToast } from '../../shared/ui/Toast'
 import type { TaskInput } from './input'
+import type { BulkChange, TaskTarget } from './service'
 import type { TaskGroup } from './model'
-import { changeCompletion, changeTaskStatus, duplicateTask, rescheduleTask, deleteTask, permanentlyDeleteTask, restoreTask, saveTask, watchTaskGroups } from './service'
+import { applyBulkTaskChange, changeCompletion, changeTaskStatus, duplicateTask, deleteTask, permanentlyDeleteTask, restoreTask, saveTask, watchTaskGroups } from './service'
 
 export function useTaskGroups(trash: boolean) {
   const [state, setState] = useState<{ trash: boolean; groups?: TaskGroup[]; error?: boolean }>()
@@ -19,7 +20,7 @@ export function useTaskActions() {
     setBusy(true)
     try {
       const undo = await operation()
-      show({
+      if (message) show({
         message,
         action: typeof undo === 'function' ? { label: 'Undo', run: async () => { await undo() } } : undefined,
       })
@@ -32,6 +33,15 @@ export function useTaskActions() {
   }
   return {
     busy,
+    bulk: (targets: TaskTarget[], change: BulkChange, after: () => void) => perform(async () => {
+      const result = await applyBulkTaskChange(targets, change)
+      const count = result.count === 1 ? '1 task' : result.count + ' tasks'
+      const labels = { done: 'marked done', skip: 'skipped', category: 'updated', date: 'moved', delete: 'deleted' }
+      const detail = result.timeRemoved ? result.count === 1 ? ' (time removed because it already passed)' : ' (' + result.timeRemoved + ' elapsed times removed)' : ''
+      const message = change.kind === 'date' && result.count === 1 && result.timeRemoved
+        ? 'Moved to today (time removed because it already passed).' : count + ' ' + labels[change.kind] + detail + '.'
+      show({ message, action: { label: 'Undo', run: result.undo } })
+    }, '', after),
     save: (value: TaskInput, weekStart: number, id: string | undefined, date: string | undefined, after: () => void) =>
       perform(async () => {
         const undo = await saveTask(value, weekStart, id, date)
@@ -44,8 +54,6 @@ export function useTaskActions() {
       }),
     status: (id: string, date: string | undefined, status: 'in_progress' | 'skipped') =>
       perform(() => changeTaskStatus(id, date, status), status === 'skipped' ? 'Task skipped.' : 'Task in progress.'),
-    reschedule: (id: string, occurrence: string | undefined, date: string, after: () => void) =>
-      perform(() => rescheduleTask(id, occurrence, date), 'Task rescheduled.', after),
     duplicate: (id: string, weekStart: number, open: (id: string, value: TaskInput) => void) =>
       perform(async () => { const copy = await duplicateTask(id, weekStart); open(copy.id, copy.value); return copy.undo }, 'Task duplicated.'),
     check: (id: string, date: string | undefined, done: boolean, subtaskId?: string) =>
