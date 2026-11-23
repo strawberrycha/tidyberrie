@@ -15,6 +15,8 @@ export const scheduleDraft = z.strictObject({
   path: ['endDate'], message: 'End date must be on or after the start date.',
 })
 
+export const alarmMode = false
+
 export const scheduledTaskFields = {
   scheduleId: z.uuid().nullable().default(null),
   alertNotify: z.boolean().default(false),

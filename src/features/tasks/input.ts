@@ -52,8 +52,9 @@ export type TaskInput = z.infer<typeof taskInput>
 export type SubtaskInput = z.infer<typeof subtaskInput>
 
 // Form and service share the same rule. Stored/imported records use the structural schema.
-export function taskScheduleInput(previous?: TaskInput, now = new Date()) {
+export function taskScheduleInput(previous?: TaskInput, now = new Date(), occurrence = false) {
   return taskInput.superRefine((value, context) => {
+    if (value.scheduleId && !occurrence) return
     const today = localDate(now)
     const changedDate = !previous || previous.startDate !== value.startDate
     const changedStart = changedDate || previous.allDay !== value.allDay || previous.startTime !== value.startTime

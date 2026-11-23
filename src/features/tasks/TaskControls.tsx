@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { Ellipsis, Search, SlidersHorizontal, X } from 'lucide-react'
 import { AppBar } from '../../app/AppBar'
@@ -7,10 +8,10 @@ import type { SmartList } from './lists'
 import type { Records } from '../../shared/db/schemas'
 import { TaskDialog } from './TaskDialog'
 
-export const emptyFilters = { category: '', tag: '', priority: '', status: '', pinned: false }
+export const emptyFilters = { schedule: '', tag: '', priority: '', status: '', pinned: false }
 export type Filters = typeof emptyFilters
 const chips = ['Today', 'Upcoming', 'Overdue', 'All', 'Completed'] as const
-const filterLabels = { category: 'Category', tag: 'Tag', priority: 'Priority', status: 'Status', pinned: 'Pinned only' }
+const filterLabels = { schedule: 'Schedule', tag: 'Tag', priority: 'Priority', status: 'Status', pinned: 'Pinned only' }
 
 export function useTaskSearch(query: string) {
   const [delayed, setDelayed] = useState(query)
@@ -21,10 +22,10 @@ export function useTaskSearch(query: string) {
   return query ? delayed : ''
 }
 
-export function TaskControls({ list, select, query, setQuery, filters, apply, sort, setSort, overdue, categories = [], grouped, setGrouped, selection }: {
+export function TaskControls({ list, select, query, setQuery, filters, apply, overdue, schedules = [], grouped, setGrouped, selection }: {
   list: SmartList; select: (list: SmartList) => void; query: string; setQuery: (query: string) => void;
-  filters: Filters; apply: (next: Filters) => void; sort: string; setSort: (sort: string) => void; overdue: number
-  categories?: Records['categories'][]; grouped?: boolean; setGrouped?: (value: boolean) => void
+  filters: Filters; apply: (next: Filters) => void; overdue: number
+  schedules?: Records['schedules'][]; grouped?: boolean; setGrouped?: (value: boolean) => void
   selection?: { count: number; clear: () => void; all: () => void }
 }) {
   const [searching, search] = useState(false)
@@ -91,33 +92,33 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, so
     {active.length > 0 && <div className="active-filters" aria-label="Active filters">
       {active.map(key => {
         const label = key === 'pinned' ? filterLabels[key] : filterLabels[key] + ': ' +
-          (key === 'category' ? filters.category.split(',').map(id => categories.find(item => item.id === id)?.name ?? 'Uncategorized').join(', ') : key === 'status'
+          (key === 'schedule' ? filters.schedule.split(',').map(id => schedules.find(item => item.id === id)?.name ?? 'Other tasks').join(', ') : key === 'status'
             ? statusLabels[filters.status as keyof typeof statusLabels] : key === 'priority' ? filters.priority[0].toUpperCase() + filters.priority.slice(1) : filters.tag)
         return <button type="button" className="secondary" aria-label={'Remove ' + label} key={key}
           onClick={() => apply({ ...filters, [key]: emptyFilters[key] })}>{label}<X aria-hidden size={inlineIconSize} strokeWidth={iconStroke} /></button>
       })}
     </div>}
-    {sheet === 'filter' && <FilterSheet categories={categories} initial={filters} close={close} apply={next => { apply(next); close() }} />}
+    {sheet === 'filter' && <FilterSheet schedules={schedules} initial={filters} close={close} apply={next => { apply(next); close() }} />}
     {sheet === 'sort' && <TaskDialog title="Task options" close={close}>
-      <label className="task-sheet-field">Sort<select value={sort} onChange={event => { setSort(event.target.value); close() }}>
-        <option value="date">Date</option><option value="priority">Priority</option><option value="created">Newest created</option>
+      <label className="task-sheet-field">View<select value={grouped ? 'schedule' : 'time'}
+        onChange={event => { setGrouped?.(event.target.value === 'schedule'); close() }}>
+        <option value="schedule">By schedule</option><option value="time">By time</option>
       </select></label>
-      {setGrouped && <label className="task-sheet-field">Group<select value={grouped ? 'category' : 'none'}
-        onChange={event => { setGrouped(event.target.value === 'category'); close() }}><option value="none">None</option><option value="category">Category</option></select></label>}
+      <Link className="secondary" to="/more/schedules">Manage schedules</Link>
     </TaskDialog>}
   </>
 }
 
-function FilterSheet({ initial, close, apply, categories }: { categories: Records['categories'][]; initial: Filters; close: () => void; apply: (next: Filters) => void }) {
+function FilterSheet({ initial, close, apply, schedules }: { schedules: Records['schedules'][]; initial: Filters; close: () => void; apply: (next: Filters) => void }) {
   const [draft, setDraft] = useState(initial)
   return <TaskDialog title="Filter tasks" close={close}>
     <div className="sheet-handle" aria-hidden />
     <form className="task-form task-filter-sheet" onSubmit={event => { event.preventDefault(); apply(draft) }}>
-      <fieldset><legend>Categories</legend>
-        {[{ id: 'none', name: 'Uncategorized' }, ...categories].map(item => {
-          const selected = draft.category ? draft.category.split(',') : []
+      <fieldset><legend>Schedules</legend>
+        {[{ id: 'none', name: 'Other tasks' }, ...schedules].map(item => {
+          const selected = draft.schedule ? draft.schedule.split(',') : []
           return <label className="task-check" key={item.id}><input type="checkbox" checked={selected.includes(item.id)}
-            onChange={event => setDraft({ ...draft, category: (event.target.checked ? [...selected, item.id] :
+            onChange={event => setDraft({ ...draft, schedule: (event.target.checked ? [...selected, item.id] :
               selected.filter(id => id !== item.id)).join(',') })} />{item.name}</label>
         })}
       </fieldset>

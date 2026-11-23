@@ -69,6 +69,32 @@
 .task-date-chips button span { display: grid; place-items: center; min-height: 40px; padding-inline: var(--space-2); border-radius: var(--pill); background: var(--surface); }
 .task-date-chips button[aria-pressed="true"] span { background: var(--soft); color: var(--primary); outline: 1px solid currentColor; outline-offset: -1px; }
 
+.task-row { --task-time-width: calc(var(--touch) + var(--space-4)); --task-expand-duration: 200ms; }
+.task-row-heading {
+  min-block-size: var(--app-bar-height); display: grid; align-items: center;
+  grid-template-columns: var(--task-time-width) auto minmax(0, 1fr) auto auto; column-gap: var(--space-1);
+}
+.task-row-time { font-variant-numeric: tabular-nums; font-size: var(--caption); overflow-wrap: anywhere; }
+.task-row-alerts, .task-row-progress { display: flex; align-items: center; gap: var(--space-1); }
+.task-row-title { min-inline-size: 0; }
+.task-row-title h2, .task-row-open { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.task-row-open { color: inherit; font: inherit; text-align: start; width: 100%; background: transparent; }
+.task-row-schedule { font-size: var(--caption); color: var(--text-muted); }
+.task-schedule-dot { display: inline-block; inline-size: var(--space-2); block-size: var(--space-2); border-radius: var(--pill); background: var(--task-accent); }
+.task-row:is([data-complete="true"], [data-skipped="true"]) .task-row-title { color: var(--text-muted); }
+.task-row[data-complete="true"] .task-row-title h2 { text-decoration: line-through; }
+.task-row-subtasks { display: grid; grid-template-rows: 0fr; opacity: 0; padding-inline-start: var(--space-4); }
+.task-row-subtasks[data-expanded="true"] { grid-template-rows: 1fr; opacity: 1; }
+.task-row-subtasks > div { overflow: hidden; }
+.schedule-day-dots { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); }
+.schedule-day-dots > span { padding-inline: var(--space-1); border-radius: var(--pill); color: var(--text-muted); border: var(--hairline) solid var(--border); }
+.schedule-day-dots > [data-active="true"] { background: var(--primary); color: var(--on-primary); font-weight: var(--semi); }
+.schedule-editor { min-block-size: 100%; background: var(--bg); }
+html[data-text-size="200"] .task-row-heading { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+html[data-text-size="200"] .task-row-time { grid-column: 1 / -1; }
+@media (prefers-reduced-motion: no-preference) {
+  .task-row-subtasks { transition: grid-template-rows var(--task-expand-duration) ease, opacity var(--task-expand-duration) ease; }
+}
 .task-gesture { position: relative; overflow: clip; border-radius: var(--card-radius); }
 .task-gesture[data-swipe-enabled="true"] { touch-action: pan-y; }
 .task-gesture > article { position: relative; }

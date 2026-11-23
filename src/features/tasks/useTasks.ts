@@ -25,8 +25,10 @@ export function useTaskActions() {
         action: typeof undo === 'function' ? { label: 'Undo', run: async () => { await undo() } } : undefined,
       })
       after?.()
-    } catch {
-      show({ message: 'Could not save the task change. Try again.' })
+    } catch (error) {
+      const message = error instanceof Error && /^(That time|Pick a date|Pick today|Set a start time|Choose an active schedule)/.test(error.message)
+        ? error.message : 'Could not save the task change. Try again.'
+      show({ message })
     } finally {
       setBusy(false)
     }
@@ -36,7 +38,7 @@ export function useTaskActions() {
     bulk: (targets: TaskTarget[], change: BulkChange, after: () => void) => perform(async () => {
       const result = await applyBulkTaskChange(targets, change)
       const count = result.count === 1 ? '1 task' : result.count + ' tasks'
-      const labels = { done: 'marked done', skip: 'skipped', category: 'updated', date: 'moved', delete: 'deleted' }
+      const labels = { done: 'marked done', skip: 'skipped', category: 'updated', schedule: 'moved', date: 'moved', delete: 'deleted' }
       const detail = result.timeRemoved ? result.count === 1 ? ' (time removed because it already passed)' : ' (' + result.timeRemoved + ' elapsed times removed)' : ''
       const message = change.kind === 'date' && result.count === 1 && result.timeRemoved
         ? 'Moved to today (time removed because it already passed).' : count + ' ' + labels[change.kind] + detail + '.'

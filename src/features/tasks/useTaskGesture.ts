@@ -16,7 +16,7 @@ export function useTaskGesture(options: {
     onPointerDown(event: PointerEvent<HTMLElement>) {
       suppress.current = false
       if (gesture.current || event.pointerType === 'mouse' || event.button !== 0 ||
-        (event.target as Element).closest('button, input, a, summary') ||
+        (event.target as Element).closest('button:not(.task-row-open), input, a, summary') ||
         !gestureAllowed(event.clientX, window.innerWidth, options.disabled)) return
       gesture.current = { id: event.pointerId, x: event.clientX, y: event.clientY, at: event.timeStamp,
         axis: 'waiting', width: event.currentTarget.getBoundingClientRect().width }

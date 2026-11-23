@@ -1,5 +1,6 @@
 import { liveQuery } from 'dexie'
 import { db, table } from '../../shared/db/database'
+import { compareScheduleTasks } from './model'
 import { metadata } from '../../shared/db/repository'
 import type { Records } from '../../shared/db/schemas'
 
@@ -65,7 +66,34 @@ export function setScheduleDeleted(id: string, deleted: boolean): Promise<() => 
   })
 }
 
-export function watchScheduleRecords(next: (rows: Schedule[]) => void, error: () => void) {
-  const subscription = liveQuery(() => schedules.orderBy('order').filter(row => !row.deletedAt).toArray()).subscribe({ next, error })
+export function reorderScheduleTask(scheduleId: string, taskId: string, offset: number) {
+  return db.transaction('rw', tasks, async () => {
+    const target = await tasks.get(taskId)
+    if (!target || target.deletedAt || target.scheduleId !== scheduleId) throw new Error('Task unavailable.')
+    const peers = await tasks.where('scheduleId').equals(scheduleId).filter(item => !item.deletedAt &&
+      item.startAt?.slice(11, 16) === target.startAt?.slice(11, 16)).toArray()
+    peers.sort(compareScheduleTasks)
+    const index = peers.findIndex(item => item.id === taskId)
+    if (!peers[index + offset]) return
+    ;[peers[index], peers[index + offset]] = [peers[index + offset], peers[index]]
+    const { updatedAt } = metadata()
+    await tasks.bulkPut(peers.map((item, scheduleOrder) => ({ ...item, scheduleOrder, updatedAt })))
+  })
+}
+
+export function reorderSchedule(id: string, offset: number) {
+  return db.transaction('rw', schedules, async () => {
+    const rows = await schedules.orderBy('order').filter(row => !row.deletedAt).toArray()
+    const index = rows.findIndex(row => row.id === id)
+    const current = rows[index]
+    const other = rows[index + offset]
+    if (!current || !other) return
+    const { updatedAt } = metadata()
+    await schedules.bulkPut([{ ...current, order: other.order, updatedAt }, { ...other, order: current.order, updatedAt }])
+  })
+}
+
+export function watchScheduleRecords(next: (rows: Schedule[]) => void, error: () => void, deleted = false) {
+  const subscription = liveQuery(() => schedules.orderBy('order').filter(row => !!row.deletedAt === deleted).toArray()).subscribe({ next, error })
   return () => subscription.unsubscribe()
 }

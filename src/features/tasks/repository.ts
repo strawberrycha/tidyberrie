@@ -11,7 +11,7 @@ const settings = table('settings')
 const categories = table('categories')
 const schedules = table('schedules')
 const tables = [tasks, subtasks, exceptions]
-export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', [...tables, categories, schedules], operation)
+export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', [...tables, categories, schedules, settings], operation)
 export const readSchedule = (id: string) => schedules.get(id)
 export const readCategory = (id: string) => categories.get(id)
 export const taskTitles = async (date: string) => (await tasks.filter(item => !item.deletedAt && item.startAt?.slice(0, 10) === date).toArray()).map(item => item.title)

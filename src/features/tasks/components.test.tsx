@@ -78,6 +78,25 @@ it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Es
   confirmDiscard.mockRestore()
 })
 
+it('shows scheduled time, accessible notification and task state without retired time fields', () => {
+  const value = { ...initial, title: 'Wake', status: 'done' as const, allDay: false, startTime: '07:15',
+    optional: true, alertNotify: true, alertAlarm: true, reminders: [0 as const], estimateMinutes: 10, actualMinutes: 8 }
+  const task = { id: crypto.randomUUID(), createdAt: '', updatedAt: '', deletedAt: null, ...storedTask(value, 1) }
+  const row = { group: { task, subtasks: [], exceptions: [] }, value }
+  const { rerender } = render(<TaskCard row={row} now={new Date(2026, 10, 22)} timeFormat="24h" next
+    canComplete disabled={false} check={vi.fn()} />)
+  expect(screen.getByText('07:15')).toHaveClass('task-row-time')
+  expect(screen.getByRole('img', { name: 'Notification on' })).toBeInTheDocument()
+  expect(screen.queryByRole('img', { name: 'Alarm on' })).not.toBeInTheDocument()
+  expect(screen.getByRole('checkbox', { name: /Done.*Wake/ })).toBeChecked()
+  expect(screen.getByText('Next')).toBeVisible()
+  expect(screen.getByText('Optional')).toBeVisible()
+  expect(screen.queryByText('Est 10m')).not.toBeInTheDocument()
+  rerender(<TaskCard row={{ ...row, value: { ...value, status: 'skipped' } }} now={new Date(2026, 10, 22)}
+    canComplete disabled={false} check={vi.fn()} />)
+  expect(screen.getByText('Skipped')).toBeVisible()
+})
+
 it('shows textual progress and a priority icon, and checks an expanded subtask', () => {
   const item = { ...newSubtask(), title: 'Outline' }
   const value = { ...initial, title: 'Write', priority: 'high' as const, subtasks: [item] }
@@ -85,10 +104,10 @@ it('shows textual progress and a priority icon, and checks an expanded subtask',
   const check = vi.fn()
   render(<TaskCard row={{ group: { task, subtasks: [], exceptions: [] }, value }} now={new Date(2026, 10, 22)}
     canComplete disabled={false} edit={() => {}} remove={() => {}} check={check} />)
-  expect(screen.getByText('Subtasks 0/1')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Subtasks 0/1' })).toBeVisible()
   expect(screen.getByText('high priority')).toBeVisible()
   expect(screen.getByTestId('priority-icon')).toHaveAttribute('aria-hidden', 'true')
-  fireEvent.click(screen.getByRole('button', { name: 'Show subtasks' }))
+  fireEvent.click(screen.getByRole('button', { name: /Subtasks/ }))
   fireEvent.click(screen.getByRole('checkbox', { name: 'Outline' }))
   expect(check).toHaveBeenCalledWith(true, item.id)
 })

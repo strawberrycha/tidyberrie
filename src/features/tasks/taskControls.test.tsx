@@ -27,7 +27,7 @@ function Harness() {
   const [query, setQuery] = useState('')
   const delayed = useTaskSearch(query)
   return <><TaskControls list="Today" select={() => {}} filters={filters} apply={apply} query={query} setQuery={setQuery}
-    overdue={3} sort="date" setSort={() => {}} /><output>{delayed}</output></>
+    overdue={3} /><output>{delayed}</output></>
 }
 
 it('excludes the development seed from production and native builds', () => {

@@ -7,16 +7,20 @@ import { localDate } from './recurrence'
 import { storedTask } from './model'
 import type { TaskGroup } from './model'
 import { defaultCategories } from './categoryData'
+import { ToastProvider } from '../../shared/ui/Toast'
+import type { Schedule } from './useSchedules'
+import { dayLabel } from './useSchedules'
 import { Tasks } from './Tasks'
+import { ScheduleDays, Schedules } from './Schedules'
 
-const platform = vi.hoisted(() => ({ native: false, bulk: vi.fn(), groups: [] as TaskGroup[], categories: [] as ReturnType<typeof defaultCategories> }))
+const platform = vi.hoisted(() => ({ native: false, bulk: vi.fn(), groups: [] as TaskGroup[], schedules: [] as Schedule[] }))
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => platform.native } }))
 vi.mock('../../shared/theme/ThemeProvider', () => ({ useTheme: () => ({ preferences: { weekStart: 0 } }) }))
 vi.mock('./useTasks', () => ({ useTaskGroups: () => ({ groups: platform.groups }), useTaskActions: () => ({ busy: false, bulk: platform.bulk }) }))
 
-vi.mock('./Categories', () => ({ useCategories: () => ({ rows: platform.categories }) }))
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); platform.native = false; platform.bulk.mockReset(); platform.groups = []; platform.categories = [] })
-const show = () => render(<MemoryRouter><Tasks /></MemoryRouter>)
+vi.mock('./useSchedules', async importOriginal => ({ ...await importOriginal<typeof import('./useSchedules')>(), useSchedules: () => ({ rows: platform.schedules }) }))
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); platform.native = false; platform.bulk.mockReset(); platform.groups = []; platform.schedules = []; localStorage.clear() })
+const show = () => render(<MemoryRouter><ToastProvider><Tasks /></ToastProvider></MemoryRouter>)
 
 it('excludes the seed button in production and in a native development build', () => {
   vi.stubEnv('DEV', false)
@@ -112,23 +116,29 @@ it('offers one repeating deletion choice and keeps optional tasks out of Move al
   expect(platform.bulk).toHaveBeenLastCalledWith([{ id: platform.groups[1].task.id, occurrence: undefined }], { kind: 'date', date: localDate() }, expect.any(Function))
 })
 
-it('groups and collapses tasks, excludes skipped from counts, and filters by category', () => {
+it('groups and collapses tasks, excludes skipped from counts, and filters by schedule', () => {
   mockDialogs()
-  const [sleep, meals] = defaultCategories()
-  platform.categories = [sleep, meals]
+  const days = [new Date().getDay()]
+  const [sleep, meals] = defaultCategories().slice(0, 2).map((item, index) => ({ ...item, name: index ? 'Meals' : 'Sleep', days, paused: false, startDate: null, endDate: null }))
+  platform.schedules = [sleep, meals]
   platform.groups = [
-    { title: 'Nap', categoryId: sleep.id, status: 'done' },
-    { title: 'Late nap', categoryId: sleep.id, status: 'skipped' },
-    { title: 'Dinner', categoryId: meals.id, status: 'todo' },
-  ].map(({ title, categoryId, status }) => ({
-    task: { ...sleep, id: crypto.randomUUID(), ...storedTask({ ...emptyTask('2099-01-01'), title, categoryId,
-      status: status as 'done' | 'skipped' | 'todo' }, 0) }, subtasks: [], exceptions: [],
-  }))
+    { title: 'Nap', scheduleId: sleep.id, status: 'done' },
+    { title: 'Late nap', scheduleId: sleep.id, status: 'skipped' },
+    { title: 'Dinner', scheduleId: meals.id, status: 'todo' },
+  ].map(({ title, scheduleId, status }) => {
+    const task = { ...sleep, id: crypto.randomUUID(), ...storedTask({ ...emptyTask(localDate()), title, scheduleId, allDay: false, startTime: '07:00',
+      status: status as 'done' | 'skipped' | 'todo' }, 0) }
+    return { task, schedule: platform.schedules.find(schedule => schedule.id === scheduleId), subtasks: [],
+      exceptions: status === 'done' ? [{ ...sleep, taskId: task.id, date: localDate(), action: 'completed' as const, movedTo: null, subtaskStates: {} }] : [] }
+  })
   show()
-  fireEvent.click(screen.getByRole('button', { name: 'All' }))
-  fireEvent.click(screen.getByRole('button', { name: 'More task options' }))
-  fireEvent.change(screen.getByLabelText('Group'), { target: { value: 'category' } })
-  const sleepGroup = screen.getByRole('button', { name: 'Sleep · 1 of 1 done' })
+  const sleepGroup = screen.getByRole('button', { name: 'Sleep · ' + dayLabel(days) + ' · 1 of 1 done' })
+  fireEvent.click(screen.getByRole('button', { name: 'Add task to Sleep' }))
+  expect(screen.getByRole('button', { name: 'Schedule · Sleep' })).toBeVisible()
+  expect(screen.queryByLabelText('Date')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Start time')).toBeRequired()
+  expect(screen.getByRole('switch', { name: 'Notify' })).toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Close dialog' }))
   fireEvent.click(sleepGroup)
   expect(sleepGroup).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByRole('heading', { name: 'Nap' })).not.toBeInTheDocument()
@@ -138,13 +148,47 @@ it('groups and collapses tasks, excludes skipped from counts, and filters by cat
   fireEvent.click(sheet.getByRole('button', { name: 'Show results' }))
   expect(screen.getByRole('heading', { name: 'Dinner' })).toBeVisible()
   expect(sleepGroup).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'More task options' }))
+  fireEvent.change(screen.getByLabelText('View'), { target: { value: 'time' } })
+  expect(localStorage.getItem('tidyberrie-task-view')).toBe('time')
+  expect(screen.queryByRole('button', { name: 'Add task to Meals' })).not.toBeInTheDocument()
+})
+
+it('applies day presets and announces the active day toggle', () => {
+  const setDays = vi.fn()
+  render(<ScheduleDays days={[1, 3]} setDays={setDays} />)
+  expect(screen.getByRole('button', { name: 'Monday' })).toHaveAttribute('aria-pressed', 'true')
+  fireEvent.click(screen.getByRole('button', { name: 'Monday' }))
+  expect(setDays).toHaveBeenLastCalledWith([3])
+  fireEvent.click(screen.getByRole('button', { name: 'Weekdays' }))
+  expect(setDays).toHaveBeenLastCalledWith([1, 2, 3, 4, 5])
+  fireEvent.click(screen.getByRole('button', { name: 'Weekends' }))
+  expect(setDays).toHaveBeenLastCalledWith([0, 6])
+})
+
+it('validates a schedule editor draft and protects unsaved changes', async () => {
+  render(<MemoryRouter><ToastProvider><Schedules /></ToastProvider></MemoryRouter>)
+  fireEvent.click(screen.getByRole('button', { name: 'Create a schedule' }))
+  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'School' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save schedule' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Choose at least one day.')
+  fireEvent.click(screen.getByRole('button', { name: 'Weekdays' }))
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  try {
+    fireEvent.click(screen.getAllByRole('button', { name: 'Back' })[0])
+    expect(confirm).toHaveBeenCalledWith('Discard unsaved changes?')
+    expect(screen.getByLabelText('Name')).toHaveValue('School')
+    confirm.mockReturnValue(true)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Back' })[0])
+    expect(screen.getByRole('button', { name: 'Create a schedule' })).toBeVisible()
+  } finally { confirm.mockRestore() }
 })
 
 it('shows concise empty states with an add action only on appropriate lists', () => {
   show()
   const lists = screen.getByRole('navigation', { name: 'Task lists' })
   for (const [chip, copy, add] of [
-    ['Today', 'Nothing due today', true], ['Upcoming', 'Nothing coming up', true],
+    ['Today', 'Plan your day with a schedule', false], ['Upcoming', 'Nothing coming up', true],
     ['Overdue', 'No overdue tasks. Nice!', false], ['All', 'No tasks yet', true], ['Done', 'Nothing completed yet', false],
   ] as const) {
     fireEvent.click(within(lists).getByRole('button', { name: chip }))

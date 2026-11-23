@@ -26,6 +26,7 @@ export const recordSchemas = {
     priority: z.enum(['low', 'medium', 'high']), status: normalizedStatus,
     ...taskFields,
     ...scheduledTaskFields,
+    scheduleOrder: z.int().nonnegative().optional(),
     repeatRule: text.nullable(), reminders: z.array(reminder),
     autoCompleteWhenSubtasksDone: z.boolean(), pinned: z.boolean(),
   }),

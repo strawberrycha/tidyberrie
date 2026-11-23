@@ -87,7 +87,7 @@ it('renders the short plan, progress, reminder health, and the overdue and Show 
   expect(screen.getByRole('link', { name: 'Show 1 more' })).toHaveAttribute('href', '/tasks?list=Today')
   expect(screen.getByRole('link', { name: /Reminders are off/ })).toHaveAttribute('href', '/more/reminders')
   fireEvent.click(screen.getByRole('checkbox', { name: 'Complete First' }))
-  expect(fixture.check).toHaveBeenCalledWith(fixture.rows[0].group.task.id, undefined, true)
+  expect(fixture.check).toHaveBeenCalledWith(fixture.rows[0].group.task.id, undefined, true, undefined)
 })
 
 it.each([

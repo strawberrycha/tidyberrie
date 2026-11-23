@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlarmClock, Check, ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper, Moon, Sun, Sunset } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper, Moon, Sun, Sunset } from 'lucide-react'
 import { features } from '../../app/features'
 import { moreRoute } from '../../app/navigation'
 import { useMinuteClock } from '../../app/useMinuteClock'
@@ -11,14 +11,15 @@ import { PlannerAddButton, QuickAdd } from '../calendar/PlannerTasks'
 import { emptyDay, summarizeTasks } from '../calendar/taskWindow'
 import { useCalendarData } from '../calendar/useCalendarData'
 import { defaultRepeat, addDays } from '../tasks/recurrence'
-import { TaskIcon } from '../tasks/icons'
 import { TaskDialog } from '../tasks/TaskDialog'
 import { TaskForm } from '../tasks/TaskForm'
 import { useTaskActions } from '../tasks/useTasks'
 import type { TaskRow } from '../tasks/model'
-import { isOpen } from '../tasks/model'
+import { isOpen, taskValue } from '../tasks/model'
 import { useReminders } from '../reminders/useReminders'
 import { Avatar } from './Avatar'
+import { newSubtask } from '../tasks/input'
+import { TaskCard } from '../tasks/TaskCard'
 import { dailyQuote, greeting, openPlan, relativeTime } from './model'
 import { BillLine, BudgetQuickEditor, HomeBudgetSummary, useHomeBudget } from './BudgetSummary'
 import '../tasks/tasks.css'
@@ -85,7 +86,9 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     const bills = (budget?.model?.upcoming ?? []).map(bill => ({ date: bill.date, label: bill.category, bill }))
     return [...rows, ...bills].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5)
   }, [data.groups, selected, budget?.model?.upcoming])
-  const close = () => setDialog(undefined)
+  const [choosingScope, setChoosingScope] = useState(false)
+  const close = () => { setDialog(undefined); setChoosingScope(false) }
+  const openRow = (row: TaskRow) => { setChoosingScope(!!(row.value.scheduleId && row.occurrence)); setDialog(row) }
   const month = dateLabel(selected, { month: 'long', year: 'numeric' })
   const allDone = counted > 0 && !open.length
   const hour = now.getHours()
@@ -146,21 +149,13 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
           {open.slice(0, 3).map((row, index) => {
             const { value, group, occurrence } = row
             const next = isToday && index === 0
-            return <article key={group.task.id + '/' + (occurrence ?? '')} className={'home-task task-color-' + (value.color || 'rose')}>
-              <button className="icon-button home-check" type="button" role="checkbox" aria-checked={false} aria-label={'Complete ' + value.title}
-                disabled={actions.busy} onClick={() => void actions.check(group.task.id, occurrence, true)}><Check aria-hidden size={19} /></button>
-              <button type="button" className="home-task-body" onClick={() => setDialog(row)}>
-                {next && <span className="home-next">Next up · {relativeTime(value.startTime, now)}</span>}
-                <span className="home-task-title"><TaskIcon name={value.icon} size={18} /><strong>{value.title}</strong></span>
-                <span className="home-task-meta">
-                  {value.startTime ? new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h' })
-                    .format(new Date('2000-01-01T' + value.startTime)) : value.allDay ? 'All day' : 'Any time'}
-                  {value.subtasks.length > 0 && <> · {value.subtasks.filter(task => task.done).length}/{value.subtasks.length}</>}
-                  {(value.reminders.length > 0 || value.subtasks.some(task => task.reminder !== undefined)) &&
-                    <AlarmClock role="img" aria-label="Reminder set" size={16} />}
-                </span>
-              </button>
-            </article>
+            return <div key={group.task.id + '/' + (occurrence ?? '')}>
+              {next && <span className="home-next">Next up · {relativeTime(value.startTime, now)}</span>}
+              <TaskCard row={row} now={now} compact next={next} schedule={group.schedule} timeFormat={preferences?.timeFormat}
+                canComplete disabled={actions.busy} edit={() => openRow(row)}
+                addSubtask={title => void actions.save({ ...value, subtasks: [...value.subtasks, { ...newSubtask(), title }] }, preferences?.weekStart ?? 0, group.task.id, occurrence, () => {})}
+                check={(done, child) => void actions.check(group.task.id, occurrence, done, child)} />
+            </div>
           })}
           {open.length > 3 && <Link className="secondary settings-link" to={'/tasks?list=' + (isToday ? 'Today' : 'Upcoming')}>
             Show {open.length - 3} more</Link>}
@@ -173,7 +168,7 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
     }} />}
     {upcoming.length > 0 && <section className="home-card"><h2>Coming up</h2>
       {upcoming.map((item, index) => <BillLine key={item.date + '/' + index} name={item.label} date={item.date}
-        open={() => 'row' in item ? setDialog(item.row) : openBill(item.bill.id)} />)}
+        open={() => 'row' in item ? openRow(item.row) : openBill(item.bill.id)} />)}
     </section>}
 
     <PlannerAddButton open={openQuick} label={features.budget ? 'Quick add' : 'Add task'} />
@@ -185,7 +180,13 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
         <button className="secondary" onClick={() => setDialog({ kind: 'incomes' })}>New income</button>
       </div>
     </TaskDialog>}
-    {typeof dialog === 'object' && 'group' in dialog && <TaskForm
+    {typeof dialog === 'object' && 'group' in dialog && choosingScope && <TaskDialog title="Edit scheduled task" close={close}>
+      <div className="task-form">
+        <button className="primary" onClick={() => { setDialog({ group: dialog.group, value: taskValue(dialog.group, today) }); setChoosingScope(false) }}>All days of this schedule</button>
+        <button className="secondary" onClick={() => setChoosingScope(false)}>This day only</button>
+      </div>
+    </TaskDialog>}
+    {typeof dialog === 'object' && 'group' in dialog && !choosingScope && <TaskForm
       initial={dialog.occurrence ? { ...dialog.value, repeat: defaultRepeat } : dialog.value}
       title="Task details" editing occurrence={!!dialog.occurrence} busy={actions.busy} close={close}
       save={value => void actions.save(value, preferences?.weekStart ?? 0, dialog.group.task.id, dialog.occurrence, close)} />}

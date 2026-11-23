@@ -61,7 +61,7 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
       const schedule = await repository.readSchedule(value.scheduleId)
       if (!schedule || schedule.deletedAt) throw new Error('Choose an active schedule.')
     }
-    if (group) taskScheduleInput(taskValue(group, localDate(), occurrence)).parse(value)
+    if (group) taskScheduleInput(taskValue(group, localDate(), occurrence), new Date(), !!occurrence).parse(value)
     if (group) {
       const previous = taskValue(group, localDate(), occurrence)
       if (value.status !== previous.status) value.originalDate = null
@@ -69,7 +69,7 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
     if (occurrence && group) return occurrenceRecord(group, occurrence, value, stamp, 'edit')
     const base = storedTask(value, weekStart)
     const recurring = !!base.repeatRule || !!base.scheduleId
-    const status = recurring ? (value.status === 'done' ? 'todo' : value.status) : completedStatus(value)
+    const status = recurring ? ((value.status === 'done' || (value.scheduleId && value.status === 'skipped')) ? 'todo' : value.status) : completedStatus(value)
     const task = { ...stamp, ...group?.task, ...base, updatedAt: stamp.updatedAt, status }
     const previous = new Map(group?.subtasks.map(item => [item.id, item]))
     const children = value.subtasks.map((item, order) => {
@@ -145,7 +145,7 @@ export function duplicateTask(id: string, weekStart: number, now = new Date()) {
     const today = localDate(now)
     const input = taskValue(source, today)
     if (input.startDate < today) input.startDate = today
-    if (!input.allDay && input.startTime && +new Date(input.startDate + 'T' + input.startTime) <= +now) {
+    if (!input.scheduleId && !input.allDay && input.startTime && +new Date(input.startDate + 'T' + input.startTime) <= +now) {
       input.allDay = true
       input.startTime = ''
       input.endTime = ''
@@ -178,6 +178,7 @@ const bulkChange = z.discriminatedUnion('kind', [
   z.strictObject({ kind: z.literal('done') }),
   z.strictObject({ kind: z.literal('skip') }),
   z.strictObject({ kind: z.literal('category'), categoryId: uuid.nullable() }),
+  z.strictObject({ kind: z.literal('schedule'), scheduleId: uuid.nullable() }),
   z.strictObject({ kind: z.literal('date'), date: occurrenceDate }),
   z.strictObject({ kind: z.literal('delete'), scope: z.enum(['occurrence', 'series']) }),
 ])
@@ -187,12 +188,16 @@ export type BulkChange = z.infer<typeof bulkChange>
 export async function applyBulkTaskChange(input: TaskTarget[], request: BulkChange, now = new Date()) {
   const selected = z.array(bulkTarget).min(1).parse(input)
   const action = bulkChange.parse(request)
-  const bySeries = action.kind === 'category' || (action.kind === 'delete' && action.scope === 'series')
+  const bySeries = action.kind === 'category' || action.kind === 'schedule' || (action.kind === 'delete' && action.scope === 'series')
   const targets = [...new Map(selected.map(target => [target.id + '/' + (bySeries ? '' : target.occurrence ?? ''), target])).values()]
   return repository.inTaskTransaction(async () => {
     if (action.kind === 'category' && action.categoryId) {
       const category = await repository.readCategory(action.categoryId)
       if (!category || category.archived || category.deletedAt) throw new Error('Choose an active category.')
+    }
+    if (action.kind === 'schedule' && action.scheduleId) {
+      const schedule = await repository.readSchedule(action.scheduleId)
+      if (!schedule || schedule.deletedAt) throw new Error('Choose an active schedule.')
     }
     const undos: (() => Promise<void>)[] = []
     let timeRemoved = 0
@@ -203,6 +208,23 @@ export async function applyBulkTaskChange(input: TaskTarget[], request: BulkChan
         case 'done': undos.push(await changeCompletion(id, occurrence, true)); break
         case 'skip': undos.push(await changeTaskStatus(id, occurrence, 'skipped')); break
         case 'delete': undos.push(await deleteTask(id, bySeries ? undefined : occurrence)); break
+        case 'schedule':
+          undos.push(await repository.changeGroup(id, (previous, stamp) => {
+            const current = activeGroup(previous)
+            if (action.scheduleId && (current.task.allDay || !current.task.startAt?.slice(11, 16))) throw new Error('Set a start time before moving this task to a schedule.')
+            if (current.task.scheduleId === action.scheduleId) return current
+            const date = localDate(now)
+            const value = taskValue(current, date)
+            const leaving = !action.scheduleId && !!current.task.scheduleId
+            const elapsed = leaving && elapsedStart(value, date, now)
+            const startAt = leaving ? localTimestamp(date, elapsed ? '' : value.startTime) : current.task.startAt
+            const endAt = leaving ? !elapsed && value.endTime ? localTimestamp(date, value.endTime) : null : current.task.endAt
+            return { ...current, task: { ...current.task, startAt, endAt, scheduleId: action.scheduleId,
+              allDay: elapsed || current.task.allDay, reminders: elapsed ? [] : current.task.reminders,
+              alertNotify: elapsed ? false : current.task.alertNotify || (!current.task.scheduleId && current.task.reminders.length > 0),
+              repeatRule: action.scheduleId ? null : current.task.repeatRule, updatedAt: stamp.updatedAt } }
+          }))
+          break
         case 'category':
           undos.push(await repository.changeGroup(id, (previous, stamp) => {
             const current = activeGroup(previous)

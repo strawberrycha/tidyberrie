@@ -25,7 +25,7 @@ const Calendar = lazy(() => import('../features/calendar/Calendar').then(m => ({
 const Budget = lazy(() => import('../features/budget/Budget').then(m => ({ default: m.Budget })))
 const BudgetExtras = lazy(() => import('../features/budget/BudgetExtras').then(m => ({ default: m.BudgetExtras })))
 const MonthlySummary = lazy(() => import('../features/budget/MonthlySummary').then(m => ({ default: m.MonthlySummary })))
-const Categories = lazy(() => import('../features/tasks/Categories').then(m => ({ default: m.Categories })))
+const Schedules = lazy(() => import('../features/tasks/Schedules').then(m => ({ default: m.Schedules })))
 const More = lazy(() => import('../features/settings/More').then(m => ({ default: m.More })))
 const Appearance = lazy(() => import('../features/settings/Settings').then(m => ({ default: m.Appearance })))
 const Backups = lazy(() => import('../features/settings/BackupSettings').then(m => ({ default: m.BackupSettings })))
@@ -33,7 +33,7 @@ const Reminders = lazy(() => import('../features/reminders/Reminders').then(m =>
 
 const pages = { home: Home, tasks: Tasks, calendar: Calendar, budget: Budget, more: More }
 const morePages = {
-  trash: <Tasks trash />, categories: <Categories />, reminders: <Reminders />, appearance: <Appearance />, backups: <Backups />,
+  trash: <Tasks trash />, schedules: <Schedules />, reminders: <Reminders />, appearance: <Appearance />, backups: <Backups />,
   security: <LockSettings />, about: <section className="settings-card"><p>Tidyberrie is your private, offline planner for Android.</p></section>,
 }
 
@@ -56,7 +56,7 @@ function TabRoutes({ location, tab, overdue }: { location: Location; tab: typeof
         </section></>} />
         {tab.id === 'more' && moreItems.filter(item => item.enabled && item.id in morePages).map(item =>
           <Route key={item.id} path={item.route} element={<>
-            <AppBar title={item.label} back={() => void navigate("/more")} />{morePages[item.id as keyof typeof morePages]}
+            {item.id !== 'schedules' && <AppBar title={item.label} back={() => void navigate("/more")} />}{morePages[item.id as keyof typeof morePages]}
           </>} />)}
         {tab.id === 'budget' && tab.enabled && <>
           <Route path="/budget/extras" element={<><AppBar title="Budget extras" back={() => void navigate("/budget")} /><BudgetExtras /></>} />

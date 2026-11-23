@@ -9,6 +9,12 @@ export type TaskException = Records['taskExceptions']
 export type TaskGroup = { schedule?: Records['schedules']; task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
 export type TaskRow = { group: TaskGroup; occurrence?: string; value: TaskInput }
 
+export function compareScheduleTasks(a: Task, b: Task) {
+  return (a.startAt?.slice(11, 16) ?? '').localeCompare(b.startAt?.slice(11, 16) ?? '') ||
+    (a.scheduleOrder ?? Number.MAX_SAFE_INTEGER) - (b.scheduleOrder ?? Number.MAX_SAFE_INTEGER) ||
+    a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id)
+}
+
 export function timeOf(value?: string | null) {
   return value?.slice(11, 16) ?? ''
 }

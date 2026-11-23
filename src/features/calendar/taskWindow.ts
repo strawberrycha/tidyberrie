@@ -7,13 +7,13 @@ export type DaySummary = { rows: TaskRow[]; done: number; colors: TaskRow['value
 export const emptyDay: DaySummary = { rows: [], done: 0, colors: [] }
 const cache = new WeakMap<TaskGroup[], Map<string, Map<string, DaySummary>>>()
 
-export function summarizeTasks(groups: TaskGroup[], { from, through }: DateWindow) {
+export function summarizeTasks(groups: TaskGroup[], { from, through }: DateWindow, includeSkipped = false) {
   let windows = cache.get(groups)
   if (!windows) {
     windows = new Map()
     cache.set(groups, windows)
   }
-  const key = from + '/' + through
+  const key = from + '/' + through + '/' + includeSkipped
   const previous = windows.get(key)
   if (previous) return previous
 
@@ -45,7 +45,7 @@ export function summarizeTasks(groups: TaskGroup[], { from, through }: DateWindo
     }
     for (const occurrence of occurrences) {
       const exception = exceptions.get(occurrence)
-      if (exception?.action === 'skipped') continue
+      if (exception?.action === 'skipped' && (!includeSkipped || !group.task.scheduleId)) continue
       add({ group, occurrence, value: occurrenceValue(base, occurrence, exception) })
     }
   }

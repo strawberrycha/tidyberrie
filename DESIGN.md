@@ -49,10 +49,11 @@ Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast w
 
 Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and clock on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.
 
-- Categories use labeled icon and color chips, with archived names labeled on existing tasks. Category selection uses a sheet directly under the date controls. Category groups display completion counts and keep their collapsed state in the Tasks tab.
+- Today opens By schedule with named headers, weekday summaries, progress and a direct add control. By time uses one ordered list with schedule captions. Use the schedule editor to set day chips, dates, color, icon and a timed task timeline with manual ordering for tasks that share a start time.
+- Tasks and Home share rows with tabular time, labeled notification icons, a two-line title, subtask chip and trailing checkbox. At 200% the time moves above the title. Subtasks expand with a 200ms fade and height transition or instantly under reduced motion.
 - Long press or use the card menu to select. The selection AppBar announces the count and exposes Select all and Close. The bottom bar replaces tabs and scrolls horizontally when needed. Swipe reveals labeled Done or Reschedule actions. Reserve the Android edge gesture zone and leave vertical scrolling enabled.
 - Overdue cards offer Today and Tomorrow. Move all confirms the count and leaves the collapsed Optional group out.
-- Optional and time estimates use compact chips. A postponed card shows the original date with an icon and text.
+- Optional tasks use a compact chip. A postponed card shows the original date with an icon and text.
 - AppBars use a 56dp base, 20/24 title type, 48dp controls, and a border on scroll. Tasks adds a single row of 40dp chips inside 48dp targets and a filter sheet with draft, Reset, and Show results.
 - Use Nunito outside the wordmark, 16/22 headings, 14–16 body, captions at 12 or above, 16dp card and screen padding, 12dp card gaps, and 16–24dp section gaps. Use the shared soft card surface, rounded corners, border, and shadow.
 - Use 24dp bar icons and 20dp inline icons with 1.75 stroke. Preserve the focus ring, pressed feedback with reduced-motion support, readable disabled controls, matching loading placeholders, and Undo feedback.

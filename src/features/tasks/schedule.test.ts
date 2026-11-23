@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto'
 import { expect, it } from 'vitest'
 import { scheduleDates } from './recurrence'
-import { deleteSchedule, duplicateSchedule, saveSchedule } from './scheduleService'
+import { createExampleSchedule, deleteSchedule, moveScheduleTask, duplicateSchedule, saveSchedule } from './scheduleService'
 import { reminderWindow, notificationId } from '../reminders/window'
 import { changeCompletion, changeTaskStatus, rescheduleTask } from './service'
 import { readGroups } from './repository'
-import { storedTask, taskValue } from './model'
+import { compareScheduleTasks, storedTask, taskValue } from './model'
 import { table } from '../../shared/db/database'
 import { metadata } from '../../shared/db/repository'
 import { emptyTask, taskInput } from './input'
@@ -72,6 +72,32 @@ it('changes individual scheduled occurrences and preserves their time when resch
   expect(taskValue(group, date, '2028-03-01')).toMatchObject({ status: 'postponed', startDate: '2028-03-02', startTime: '07:00' })
   const upcoming = reminderWindow([group], +new Date('2028-02-29T00:00'), +new Date('2028-03-03T00:00'))
   expect(upcoming.map(item => item.at)).toEqual([+new Date('2028-03-02T07:00')])
+})
+
+it('persists manual order only among tasks with the same start time', async () => {
+  const schedule = await saveSchedule({ ...draft, name: 'Order' })
+  const rows = ['First', 'Second', 'Later'].map((title, index) => ({
+    ...metadata(), createdAt: '2028-02-28T00:00:0' + index + 'Z',
+    ...storedTask({ ...emptyTask('2028-02-28'), title, scheduleId: schedule.id, allDay: false,
+      startTime: index === 2 ? '08:00' : '07:00' }, 0),
+  }))
+  await table('tasks').bulkAdd(rows)
+  await moveScheduleTask(schedule.id, rows[1].id, -1)
+  const stored = await table('tasks').where('scheduleId').equals(schedule.id).toArray()
+  expect(stored.sort(compareScheduleTasks).map(row => row.title)).toEqual(['Second', 'First', 'Later'])
+})
+
+it('creates an editable example with notifications off, three subtasks, and undo', async () => {
+  const undo = await createExampleSchedule()
+  const schedule = await table('schedules').filter(item => item.name === 'Monday (example)').first()
+  expect(schedule?.days).toEqual([1])
+  const tasks = await table('tasks').where('scheduleId').equals(schedule!.id).toArray()
+  expect(tasks.map(item => item.title).sort()).toEqual(['Brush teeth', 'Tidy up bed', 'Wake up'])
+  expect(tasks.every(item => !item.alertNotify)).toBe(true)
+  const brush = tasks.find(item => item.title === 'Brush teeth')!
+  expect(await table('subtasks').where('taskId').equals(brush.id).count()).toBe(3)
+  await undo()
+  expect((await table('schedules').get(schedule!.id))?.deletedAt).toBeTruthy()
 })
 
 it('expands only enabled days inside inclusive local bounds', () => {
