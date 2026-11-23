@@ -1,5 +1,6 @@
 import { db, table } from '../../shared/db/database'
 import { metadata } from '../../shared/db/repository'
+import { defaultCategories } from './categoryData'
 import { emptyTask, priorities } from './input'
 import { storedTask } from './model'
 import { addDays, defaultRepeat, localDate } from './recurrence'
@@ -11,10 +12,12 @@ export async function seedTasks(weekStart: number) {
   const sub = table('subtasks')
   const date = localDate()
   const modes: Repeat['mode'][] = ['once', 'daily', 'weekdays', 'weekends', 'weekly', 'monthly', 'yearly', 'custom']
+  const categories = defaultCategories()
   const records = Array.from({ length: 1000 }, (_, index) => ({
     ...metadata(),
     ...storedTask({ ...emptyTask(addDays(date, (index % 61) - 30)), title: 'Sample task ' + (index + 1),
       priority: priorities[index % priorities.length], pinned: index % 10 === 0,
+      categoryId: categories[index % categories.length].id, optional: index % 5 === 0, estimateMinutes: 15 + 15 * (index % 6),
       repeat: { ...defaultRepeat, mode: modes[index % modes.length], interval: 3 },
     }, weekStart),
   }))

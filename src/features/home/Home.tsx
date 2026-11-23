@@ -16,6 +16,7 @@ import { TaskDialog } from '../tasks/TaskDialog'
 import { TaskForm } from '../tasks/TaskForm'
 import { useTaskActions } from '../tasks/useTasks'
 import type { TaskRow } from '../tasks/model'
+import { isOpen } from '../tasks/model'
 import { useReminders } from '../reminders/useReminders'
 import { Avatar } from './Avatar'
 import { dailyQuote, greeting, openPlan, relativeTime } from './model'
@@ -73,25 +74,27 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
   const data = useCalendarData(week)
   const day = data.days.get(selected) ?? emptyDay
   const currentDay = data.days.get(today) ?? emptyDay
+  const counted = day.rows.filter(row => row.value.status !== 'skipped').length
+  const currentCounted = currentDay.rows.filter(row => row.value.status !== 'skipped').length
   const isToday = selected === today
   const open = useMemo(() => openPlan(day.rows), [day.rows])
   const upcoming = useMemo(() => {
     const dates = { from: addDays(selected, 1), through: addDays(selected, 3) }
     const rows = [...summarizeTasks(data.groups, dates).entries()].flatMap(([date, day]) =>
-      day.rows.filter(({ value }) => value.status !== 'done').map(row => ({ date, label: row.value.title, row })))
+      day.rows.filter(({ value }) => isOpen(value.status)).map(row => ({ date, label: row.value.title, row })))
     const bills = (budget?.model?.upcoming ?? []).map(bill => ({ date: bill.date, label: bill.category, bill }))
     return [...rows, ...bills].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5)
   }, [data.groups, selected, budget?.model?.upcoming])
   const close = () => setDialog(undefined)
   const month = dateLabel(selected, { month: 'long', year: 'numeric' })
-  const allDone = day.rows.length > 0 && !open.length
+  const allDone = counted > 0 && !open.length
   const hour = now.getHours()
   const GreetingIcon = hour < 5 || hour >= 21 ? Moon : hour >= 17 ? Sunset : Sun
   const openBill = (id: string) => setDialog({ kind: 'expenses', id })
   const openQuick = () => setDialog(features.budget ? 'quick' : 'task')
   return <>
     <section className="home-card home-greeting">
-      <Avatar mood={currentDay.rows.length > 0 && currentDay.done === currentDay.rows.length ? 'all' : overdue >= 3 ? 'overdue' : 'none'}
+      <Avatar mood={currentCounted > 0 && currentDay.done === currentCounted ? 'all' : overdue >= 3 ? 'overdue' : 'none'}
         evening={hour >= 21 || hour < 5} />
       <div className="greeting-copy"><h2><GreetingIcon size={20} aria-hidden /> {greeting(hour)}, {preferences?.yourName ?? 'Cha'}{hour < 5 ? '?' : '!'}</h2>
         <p className="home-quote">{dailyQuote(today)}</p><time dateTime={today}>{dateLabel(today, { ...brief, weekday: 'long' })}</time>
@@ -131,8 +134,8 @@ function HomeContent({ now, today, selected, select, overdue, budget, retry }: H
       </div>
       {data.loading ? <div className="home-skeleton" role="status" aria-label="Loading tasks" /> : data.error ?
         <div role="alert"><p>Could not load tasks.</p><button className="secondary" onClick={retry}>Retry</button></div> : <>
-          {day.rows.length > 0 && <div className="home-progress"><span>{day.done} of {day.rows.length} done</span>
-            <progress aria-label="Task completion" aria-valuemin={0} aria-valuemax={day.rows.length} aria-valuenow={day.done} max={day.rows.length} value={day.done} /></div>}
+          {counted > 0 && <div className="home-progress"><span>{day.done} of {counted} done</span>
+            <progress aria-label="Task completion" aria-valuemin={0} aria-valuemax={counted} aria-valuenow={day.done} max={counted} value={day.done} /></div>}
           {!day.rows.length && <div className="planner-empty">
             <EmptyIllustration icon={ListTodo} sticker="check" />
             <p>{isToday ? 'Nothing planned today' : 'Nothing planned for this day'}</p>

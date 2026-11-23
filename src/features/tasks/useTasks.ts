@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import { useToast } from '../../shared/ui/Toast'
 import type { TaskInput } from './input'
 import type { TaskGroup } from './model'
-import { changeCompletion, deleteTask, permanentlyDeleteTask, restoreTask, saveTask, watchTasks } from './service'
+import { changeCompletion, changeTaskStatus, duplicateTask, rescheduleTask, deleteTask, permanentlyDeleteTask, restoreTask, saveTask, watchTaskGroups } from './service'
 
 export function useTaskGroups(trash: boolean) {
   const [state, setState] = useState<{ trash: boolean; groups?: TaskGroup[]; error?: boolean }>()
-  useEffect(() => watchTasks(trash, groups => setState({ trash, groups }), () => setState({ trash, error: true })), [trash])
+  useEffect(() => watchTaskGroups(trash, groups => setState({ trash, groups }), () => setState({ trash, error: true })), [trash])
   return state?.trash === trash ? state : undefined
 }
 
@@ -42,6 +42,12 @@ export function useTaskActions() {
           window.dispatchEvent(new Event('tidyberrie-reminder-explain'))
         }
       }),
+    status: (id: string, date: string | undefined, status: 'in_progress' | 'skipped') =>
+      perform(() => changeTaskStatus(id, date, status), status === 'skipped' ? 'Task skipped.' : 'Task in progress.'),
+    reschedule: (id: string, occurrence: string | undefined, date: string, after: () => void) =>
+      perform(() => rescheduleTask(id, occurrence, date), 'Task rescheduled.', after),
+    duplicate: (id: string, weekStart: number, open: (id: string, value: TaskInput) => void) =>
+      perform(async () => { const copy = await duplicateTask(id, weekStart); open(copy.id, copy.value); return copy.undo }, 'Task duplicated.'),
     check: (id: string, date: string | undefined, done: boolean, subtaskId?: string) =>
       perform(() => changeCompletion(id, date, done, subtaskId),
         subtaskId ? (done ? 'Subtask checked.' : 'Subtask unchecked.') : done ? 'Task completed.' : 'Task reopened.'),

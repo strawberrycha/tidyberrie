@@ -5,11 +5,12 @@ import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
 import { emptyTask, priorities } from './input'
 import type { TaskInput } from './input'
-import { actionDate, smartRows } from './lists'
+import { actionDate, overdueCount as countOverdue, smartRows } from './lists'
 import type { SmartList } from './lists'
 import { taskValue } from './model'
 import type { TaskGroup, TaskRow } from './model'
 import { addDays, defaultRepeat, localDate } from './recurrence'
+import { useCategories } from './Categories'
 import { TaskCard } from './TaskCard'
 import { TaskDialog } from './TaskDialog'
 import { TaskForm } from './TaskForm'
@@ -28,7 +29,7 @@ const emptyMessages: Record<SmartList, string> = {
   All: 'No tasks yet',
 }
 type Editor = { id?: string; date?: string; initial: TaskInput }
-type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup }
+type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup } | { kind: 'actions' | 'reschedule'; row: TaskRow }
 
 function useClock() {
   const [now, setNow] = useState(() => new Date())
@@ -58,15 +59,19 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState(emptyFilters)
   const [sort, setSort] = useState('date')
+  const [grouped, setGrouped] = useState(false)
+  const [collapsed, setCollapsed] = useState<string[]>([])
   const [page, setPage] = useState(0)
   const [overduePage, setOverduePage] = useState(0)
   const [dialog, setDialog] = useState<Dialog>()
+  const [moveDate, setMoveDate] = useState('')
   const { groups } = state ?? {}
+  const { rows: categories } = useCategories()
   const close = () => setDialog(undefined)
   const weekStart = preferences?.weekStart ?? 0
 
   const delayedQuery = useTaskSearch(query)
-  const overdueCount = useMemo(() => !trash && groups ? smartRows(groups, 'Overdue', now).length : 0, [groups, now, trash])
+  const overdueCount = useMemo(() => !trash && groups ? countOverdue(groups, now) : 0, [groups, now, trash])
   const updateQuery = useCallback((input: string) => { setQuery(input); setPage(0) }, [])
   const add = () => setDialog({ kind: 'edit', editor: { initial: emptyTask(today) } })
   const candidates = useMemo(() => smartRows(trash ? [] : groups ?? [], list, now, overduePage), [groups, list, now, overduePage, trash])
@@ -74,7 +79,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
     const search = delayedQuery.trim().toLocaleLowerCase()
     const tag = filters.tag.trim().toLocaleLowerCase()
     return candidates.filter(({ value }) => value.title.toLocaleLowerCase().includes(search)
-      && (!filters.color || value.color === filters.color) && (!tag || value.tag.toLocaleLowerCase().includes(tag))
+      && (!filters.category || filters.category.split(',').includes(value.categoryId ?? 'none')) && (!tag || value.tag.toLocaleLowerCase().includes(tag))
       && (!filters.pinned || value.pinned) && (!filters.priority || value.priority === filters.priority) && (!filters.status || value.status === filters.status))
       .sort((a, b) => {
         const dateOrder = a.value.startDate.localeCompare(b.value.startDate) || a.value.startTime.localeCompare(b.value.startTime)
@@ -88,6 +93,8 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const lastPage = Math.max(0, Math.ceil(size / PAGE_SIZE) - 1)
   const currentPage = Math.min(page, lastPage)
   const start = currentPage * PAGE_SIZE
+
+  const categoryGroups = [...categories.map(item => ({ key: item.id, name: item.name })), { key: '', name: 'Uncategorized' }]
 
   function edit(row: TaskRow, date?: string) {
     const value = taskValue(row.group, today, date)
@@ -108,7 +115,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   return <div className="tasks-view">
     {!trash && <TaskControls list={list} select={item => { setList(item); setPage(0); setOverduePage(0) }}
       query={query} setQuery={updateQuery} filters={filters} apply={next => { setFilters(next); setPage(0) }}
-      sort={sort} setSort={next => { setSort(next); setPage(0) }} overdue={overdueCount} />}
+      sort={sort} setSort={next => { setSort(next); setPage(0) }} overdue={overdueCount} categories={categories} grouped={grouped} setGrouped={value => { setGrouped(value); setPage(0) }} />}
     <div className="tasks-toolbar">
       {trash && <Link className="secondary" to="/tasks">Back to tasks</Link>}
       {import.meta.env.DEV && showDevelopmentTools(true) && !trash && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
@@ -139,25 +146,45 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
               <button type="button" className="secondary" disabled={actions.busy} onClick={() => void actions.restore(group.task.id)}>Restore</button>
               <button type="button" className="secondary" disabled={actions.busy} onClick={() => setDialog({ kind: 'permanent', group })}>Delete permanently</button>
             </div>
-          </article>) : rows.slice(start, start + PAGE_SIZE).map(row => {
+          </article>) : (() => {
+            const renderRow = (row: TaskRow) => {
             const repeating = !!row.group.task.repeatRule
             const date = actionDate(row, now)
             const displayed = date && !row.occurrence ? { ...row, occurrence: date, value: taskValue(row.group, today, date) } : row
-            return <TaskCard key={row.group.task.id + (row.occurrence ?? '')} row={displayed} now={now} disabled={actions.busy} canComplete={!repeating || !!date}
+            return <TaskCard key={row.group.task.id + (row.occurrence ?? '')} row={displayed} category={categories.find(item => item.id === row.value.categoryId)} now={now} disabled={actions.busy} canComplete={!repeating || !!date}
               check={(done, id) => void actions.check(row.group.task.id, date, done, id)}
+              menu={() => setDialog({ kind: 'actions', row })}
               edit={() => repeating ? setDialog({ kind: 'edit-scope', row }) : edit(row)}
               remove={() => repeating ? setDialog({ kind: 'delete-scope', row }) : remove(row)} />
-          })}
+            }
+            if (!grouped) return rows.slice(start, start + PAGE_SIZE).map(renderRow)
+            const byCategory = (row: TaskRow) => categories.some(item => item.id === row.value.categoryId) ? row.value.categoryId : ''
+            return categoryGroups.map(group => {
+              const groupRows = rows.filter(row => byCategory(row) === group.key)
+              if (!groupRows.length) return null
+              const hidden = collapsed.includes(group.key)
+              const counted = groupRows.filter(row => row.value.status !== 'skipped')
+              return <section className="task-grid" key={group.key}>
+                <button className="secondary" aria-expanded={!hidden} onClick={() => setCollapsed(previous =>
+                  hidden ? previous.filter(key => key !== group.key) : [...previous, group.key])}>
+                  {group.name} · {counted.filter(row => row.value.status === 'done').length} of {counted.length} done
+                </button>
+                {!hidden && groupRows.map(renderRow)}
+              </section>
+            })
+          })()}
         </div>
-        <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>
-        {lastPage > 0 && <div className="task-actions">
+        {!grouped && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
+        {!grouped && lastPage > 0 && <div className="task-actions">
           <button type="button" className="secondary" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
           <button type="button" className="secondary" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next page</button>
         </div>}
       </>}
     {!trash && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
-    {dialog?.kind === 'edit' && <TaskForm initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date} editing={!!dialog.editor.id}
-      busy={actions.busy} close={close} save={value => save(dialog.editor, value)} />}
+    {dialog?.kind === 'edit' && <TaskForm key={dialog.editor.id ?? 'new'} initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date} editing={!!dialog.editor.id}
+      busy={actions.busy} close={close} save={value => save(dialog.editor, value)}
+      duplicate={dialog.editor.id ? () => void actions.duplicate(dialog.editor.id!, weekStart, (id, value) =>
+        setDialog({ kind: 'edit', editor: { id, initial: value } })) : undefined} />}
     {(dialog?.kind === 'edit-scope' || dialog?.kind === 'delete-scope') && (() => {
       const editing = dialog.kind === 'edit-scope'
       const row = dialog.row
@@ -172,6 +199,29 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         </div>
       </TaskDialog>
     })()}
+    {dialog?.kind === 'actions' && (() => {
+      const { row } = dialog
+      const id = row.group.task.id
+      const date = actionDate(row, now)
+      const canChange = !row.group.task.repeatRule || !!date
+      return <TaskDialog title={row.value.title} close={close}><div className="task-form">
+        <button className="secondary" disabled={!canChange} onClick={() => { void actions.check(id, date, true); close() }}>Mark done</button>
+        <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'in_progress'); close() }}>In progress</button>
+        <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'skipped'); close() }}>Skip</button>
+        <button className="secondary" disabled={!canChange} onClick={() => { setMoveDate(row.value.startDate < today ? today : row.value.startDate); setDialog({ kind: 'reschedule', row }) }}>Reschedule</button>
+        <button className="secondary" onClick={() => void actions.duplicate(id, weekStart, (copyId, value) =>
+          setDialog({ kind: 'edit', editor: { id: copyId, initial: value } }))}>Duplicate</button>
+      </div></TaskDialog>
+    })()}
+    {dialog?.kind === 'reschedule' && <TaskDialog title="Reschedule task" close={close}>
+      <form className="task-form" onSubmit={event => {
+        event.preventDefault()
+        void actions.reschedule(dialog.row.group.task.id, actionDate(dialog.row, now), moveDate, close)
+      }}>
+        <label>Date<input type="date" required min={today} value={moveDate} onChange={event => setMoveDate(event.target.value)} /></label>
+        <button className="primary" disabled={!moveDate || moveDate < today || actions.busy}>Move task</button>
+      </form>
+    </TaskDialog>}
     {dialog?.kind === 'permanent' && <TaskDialog title="Delete task permanently?" close={close}>
       <div className="task-form"><p>“{dialog.group.task.title}” and its subtasks will be permanently deleted.</p>
         <div className="task-actions">

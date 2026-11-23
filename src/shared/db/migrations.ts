@@ -1,4 +1,5 @@
 import type Dexie from 'dexie'
+import { defaultCategories, normalizeTaskFields } from '../../features/tasks/categoryData'
 
 export function registerMigrations(db: Dexie) {
   db.version(1).stores({
@@ -32,4 +33,15 @@ export function registerMigrations(db: Dexie) {
   })
   db.version(7).stores({ recoveryDevice: 'id', lockDevice: 'id' })
   db.version(8).stores({ syncDevice: 'id', syncRecords: 'key, pending' })
+  db.version(9).stores({
+    categories: 'id,order,deletedAt',
+    tasks: 'id,startAt,endAt,status,deletedAt,categoryId',
+  }).upgrade(async tx => {
+    await tx.table('tasks').toCollection().modify(task => { Object.assign(task, normalizeTaskFields(task)) })
+    await tx.table('taskExceptions').toCollection().modify(exception => {
+      if (exception.override) exception.override = normalizeTaskFields(exception.override)
+    })
+    if (!await tx.table('categories').count()) await tx.table('categories').bulkAdd(defaultCategories())
+  })
+  db.on('populate', tx => tx.table('categories').bulkAdd(defaultCategories()))
 }

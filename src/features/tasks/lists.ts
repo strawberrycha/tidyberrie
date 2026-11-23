@@ -1,4 +1,4 @@
-import { occurrenceValue, taskValue } from './model'
+import { isOpen, occurrenceValue, taskValue } from './model'
 import type { TaskGroup, TaskRow } from './model'
 import { addDays, expandDates, localDate, nextOccurrence } from './recurrence'
 
@@ -22,7 +22,7 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
     if (!task.repeatRule) {
       if (list === 'Completed' ? base.status === 'done'
         : list === 'Overdue' ? !!task.startAt && overduePage === 0 && overdue(base, today, time)
-        : task.startAt && base.startDate >= from && base.startDate <= through && base.status !== 'done') {
+        : task.startAt && base.startDate >= from && base.startDate <= through && isOpen(base.status)) {
         rows.push({ group, value: base })
       }
       continue
@@ -40,7 +40,7 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
     for (const occurrence of candidates) {
       if (exceptions.get(occurrence)?.action === 'skipped') continue
       const value = occurrenceValue(base, occurrence, exceptions.get(occurrence))
-      if (list !== 'Completed' && (value.status === 'done' || value.startDate < from || value.startDate > through)) continue
+      if (list !== 'Completed' && (!isOpen(value.status) || value.startDate < from || value.startDate > through)) continue
       if (list === 'Overdue' && !overdue(value, today, time)) continue
       rows.push({ group, occurrence, value })
     }
@@ -50,9 +50,13 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
 
 export function overdue(value: TaskRow['value'], today: string, time: string) {
   const dueTime = value.endTime || value.startTime
-  return value.status !== 'done' && (value.startDate < today || (
+  return isOpen(value.status) && (value.startDate < today || (
     value.startDate === today && !value.allDay && !!dueTime && dueTime < time
   ))
+}
+
+export function overdueCount(groups: TaskGroup[], now: Date) {
+  return smartRows(groups, 'Overdue', now).filter(row => !row.value.optional).length
 }
 
 export function actionDate(row: TaskRow, now = new Date()) {

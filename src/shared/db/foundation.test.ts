@@ -1,15 +1,55 @@
 import 'fake-indexeddb/auto'
+import Dexie from 'dexie'
+import { emptyTask } from '../../features/tasks/input'
+import { storedTask } from '../../features/tasks/model'
+import { metadata } from './repository'
 import { afterEach, describe, expect, it } from 'vitest'
 import { addCentavos, centavos } from '../utils/money'
 import { applyTheme } from '../theme/tokens'
-import { db, table } from './database'
+import { db, openDatabase, table } from './database'
 import { Repository } from './repository'
 import { recordSchemas } from './schemas'
-import { decodeBackup } from './backupService'
+import { decodeBackup, makeExport } from './backupService'
 import { dailySnapshot, exportBackup, importBackup } from './backupRepository'
 
 afterEach(async () => {
   await Promise.all(db.tables.map(target => target.clear()))
+})
+
+it('migrates v8 task records and seeds ten categories exactly once', async () => {
+  const name = 'migration-' + crypto.randomUUID()
+  const legacy = new Dexie(name)
+  legacy.version(8).stores({ tasks: 'id,startAt,endAt,status,deletedAt', taskExceptions: 'id,taskId,date,[taskId+date],movedTo,deletedAt' })
+  const stamp = metadata()
+  await legacy.table('tasks').add({ ...stamp, title: 'Old task', status: 'doing', startAt: '2024-02-29', color: 'mint' })
+  legacy.close()
+  const upgraded = openDatabase(name)
+  try {
+    expect(await table('tasks', upgraded).get(stamp.id)).toMatchObject({
+      ...stamp, title: 'Old task', status: 'in_progress', startAt: '2024-02-29', color: 'mint', categoryId: null, optional: false,
+    })
+    expect(await table('categories', upgraded).count()).toBe(10)
+    upgraded.close()
+    await upgraded.open()
+    expect(await table('categories', upgraded).count()).toBe(10)
+  } finally {
+    await upgraded.delete()
+  }
+})
+
+it('imports category-free v1 backups and exports the new columns', async () => {
+  const backup = await exportBackup()
+  const data: Record<string, unknown> = { ...backup.data }
+  delete data.categories
+  const task = { ...metadata(), ...storedTask({ ...emptyTask('2024-02-29'), title: 'Legacy task' }, 0) }
+  data.tasks = [{ ...task, status: 'doing', categoryId: undefined, originalDate: undefined, estimateMinutes: undefined }]
+  const decoded = decodeBackup(JSON.stringify({ ...backup, data }))
+  expect(decoded.data.categories).toHaveLength(10)
+  await importBackup(decoded, 'replace')
+  expect(await table('tasks').get(task.id)).toMatchObject({ status: 'in_progress', categoryId: null, estimateMinutes: null })
+  expect(await makeExport('csv', '')).toContain('Estimated minutes')
+  expect(recordSchemas.tasks.safeParse({ ...task, estimateMinutes: 1441 }).success).toBe(false)
+  expect(recordSchemas.tasks.safeParse({ ...task, actualMinutes: -1 }).success).toBe(false)
 })
 
 describe('repository', () => {

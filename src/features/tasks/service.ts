@@ -1,5 +1,5 @@
 import { z } from '../../shared/db/strictValidation'
-import { taskInput, taskScheduleInput } from './input'
+import { newSubtask, taskInput, taskScheduleInput } from './input'
 import type { TaskInput } from './input'
 import { completedStatus, localTimestamp, storedTask, taskValue } from './model'
 import type { TaskGroup } from './model'
@@ -8,7 +8,10 @@ import * as repository from './repository'
 
 const uuid = z.uuid()
 const occurrenceDate = z.iso.date()
-export const watchTasks = repository.watchGroups
+export const watchTaskGroups = repository.watchGroups
+export function watchTasks(deleted: boolean, next: (groups: TaskGroup[]) => void, error: () => void) {
+  return watchTaskGroups(deleted, groups => next(groups.filter(group => group.task.status !== 'skipped')), error)
+}
 export const purgeTasks = repository.purgeTasks
 export const permanentlyDeleteTask = (id: string) => repository.permanentlyDelete(uuid.parse(id))
 
@@ -25,7 +28,7 @@ function activeGroup(group?: TaskGroup) {
 
 type Metadata = Pick<TaskGroup['task'], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 
-function occurrenceRecord(group: TaskGroup, date: string, value: TaskInput, stamp: Metadata, mode: 'edit' | 'check' | 'skip') {
+function occurrenceRecord(group: TaskGroup, date: string, value: TaskInput, stamp: Metadata, mode: 'edit' | 'status' | 'check' | 'skip') {
   if (!group.task.repeatRule) throw new Error('Task does not repeat')
   const existing = group.exceptions.find(item => item.date === date && !item.deletedAt)
   if (!existing && !expandDates(group.task.repeatRule, group.task.startAt?.slice(0, 10) ?? date, date, date).length) {
@@ -35,10 +38,10 @@ function occurrenceRecord(group: TaskGroup, date: string, value: TaskInput, stam
   const change: TaskGroup['exceptions'][number] = {
     ...stamp, ...existing, updatedAt: stamp.updatedAt,
     taskId: group.task.id, date,
-    action: mode === 'skip' ? 'skipped' : previous.status === 'done' ? 'completed' : 'moved',
-    movedTo: mode === 'edit' ? localTimestamp(value.startDate, value.allDay ? '' : value.startTime) : existing?.movedTo ?? null,
+    action: mode === 'skip' || previous.status === 'skipped' ? 'skipped' : previous.status === 'done' ? 'completed' : 'moved',
+    movedTo: mode === 'edit' || mode === 'status' ? localTimestamp(value.startDate, value.allDay ? '' : value.startTime) : existing?.movedTo ?? null,
     subtaskStates: Object.fromEntries(previous.subtasks.map(item => [item.id, item.done])),
-    override: mode === 'edit' ? previous : existing?.override && { ...existing.override, status: previous.status },
+    override: mode === 'edit' || mode === 'status' ? previous : existing?.override && { ...existing.override, status: previous.status, originalDate: previous.originalDate },
   }
   return { ...group, exceptions: [...group.exceptions.filter(item => item.id !== change.id), change] }
 }
@@ -54,6 +57,10 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
   return repository.changeGroup(id, (group, stamp) => {
     if (id) group = activeGroup(group)
     if (group) taskScheduleInput(taskValue(group, localDate(), occurrence)).parse(value)
+    if (group) {
+      const previous = taskValue(group, localDate(), occurrence)
+      if (value.status !== previous.status) value.originalDate = null
+    }
     if (occurrence && group) return occurrenceRecord(group, occurrence, value, stamp, 'edit')
     const base = storedTask(value, weekStart)
     const recurring = !!base.repeatRule
@@ -75,6 +82,86 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
         item.deletedAt ? item : { ...item, deletedAt: stamp.updatedAt, updatedAt: stamp.updatedAt })],
       exceptions: group?.exceptions ?? [],
     }
+  }, !id)
+}
+
+export function changeTaskStatus(id: string, occurrence: string | undefined, status: 'in_progress' | 'skipped') {
+  uuid.parse(id)
+  if (occurrence) occurrenceDate.parse(occurrence)
+  z.enum(['in_progress', 'skipped']).parse(status)
+  return repository.changeGroup(id, (previous, stamp) => {
+    const group = activeGroup(previous)
+    const value = { ...taskValue(group, localDate(), occurrence), status, originalDate: null }
+    if (occurrence) return occurrenceRecord(group, occurrence, value, stamp, 'status')
+    if (group.task.repeatRule) throw new Error('Choose a repeating occurrence.')
+    return { ...group, task: { ...group.task, status, originalDate: null, updatedAt: stamp.updatedAt } }
+  })
+}
+
+export function rescheduleTask(id: string, occurrence: string | undefined, date: string, now = new Date()) {
+  uuid.parse(id)
+  if (occurrence) occurrenceDate.parse(occurrence)
+  occurrenceDate.parse(date)
+  const today = localDate(now)
+  if (date < today) throw new Error('Pick today or a later date.')
+  return repository.changeGroup(id, (previous, stamp) => {
+    const group = activeGroup(previous)
+    if (group.task.repeatRule && !occurrence) throw new Error('Choose a repeating occurrence.')
+    const value = taskValue(group, today, occurrence)
+    if (date > value.startDate) {
+      value.originalDate ??= value.startDate
+      value.rescheduleCount++
+      value.status = 'postponed'
+    }
+    value.startDate = date
+    if (!value.allDay && value.startTime && +new Date(date + 'T' + value.startTime) <= +now) {
+      value.allDay = true
+      value.startTime = ''
+      value.endTime = ''
+      value.reminders = []
+    }
+    if (occurrence) return occurrenceRecord(group, occurrence, value, stamp, 'status')
+    return {
+      ...group, task: { ...group.task, ...storedTask(value, 0), updatedAt: stamp.updatedAt },
+      subtasks: group.subtasks.map(item => item.deletedAt || !item.dueAt ? item : {
+        ...item, dueAt: localTimestamp(date, item.dueAt.slice(11, 16)), updatedAt: stamp.updatedAt,
+      }),
+    }
+  })
+}
+
+export function duplicateTask(id: string, weekStart: number, now = new Date()) {
+  uuid.parse(id)
+  return repository.inTaskTransaction(async () => {
+    const source = activeGroup(await repository.readGroup(id))
+    const today = localDate(now)
+    const input = taskValue(source, today)
+    if (input.startDate < today) input.startDate = today
+    if (!input.allDay && input.startTime && +new Date(input.startDate + 'T' + input.startTime) <= +now) {
+      input.allDay = true
+      input.startTime = ''
+      input.endTime = ''
+    }
+    const titles = await repository.taskTitles(input.startDate)
+    if (titles.includes(input.title)) input.title = input.title.slice(0, 113) + ' (copy)'
+    if (input.repeat.until && input.repeat.until < input.startDate) input.repeat = { ...input.repeat, until: input.startDate }
+    const copy = {
+      ...input, status: 'todo' as const, actualMinutes: null, originalDate: null, rescheduleCount: 0,
+      subtasks: input.subtasks.map(item => ({ ...item, id: newSubtask().id, done: false })),
+    }
+    let copyId = ''
+    const undo = await repository.changeGroup(undefined, (_, stamp) => {
+      copyId = stamp.id
+      const value = taskScheduleInput(undefined, now).parse(copy)
+      return {
+        task: { ...stamp, ...storedTask(value, z.int().min(0).max(6).parse(weekStart)) }, exceptions: [],
+        subtasks: value.subtasks.map((item, order) => ({
+          ...stamp, id: item.id, taskId: stamp.id, order, title: item.title, done: false,
+          dueAt: item.dueTime ? localTimestamp(value.startDate, item.dueTime) : undefined, reminder: item.reminder,
+        })),
+      }
+    })
+    return { id: copyId, value: copy, undo }
   })
 }
 
@@ -95,6 +182,7 @@ export function changeCompletion(id: string, occurrence: string | undefined, don
       value.status = completedStatus(value)
     } else {
       value.status = done ? 'done' : 'todo'
+      value.originalDate = null
       if (value.autoCompleteWhenSubtasksDone) {
         value.subtasks = value.subtasks.map(item => ({ ...item, done }))
       }
@@ -102,7 +190,7 @@ export function changeCompletion(id: string, occurrence: string | undefined, don
     if (date) return occurrenceRecord(group, date, value, stamp, 'check')
     const states = new Map(value.subtasks.map(item => [item.id, item.done]))
     return {
-      ...group, task: { ...group.task, status: value.status, updatedAt: stamp.updatedAt },
+      ...group, task: { ...group.task, status: value.status, originalDate: value.originalDate, updatedAt: stamp.updatedAt },
       subtasks: group.subtasks.map(item => states.has(item.id) && states.get(item.id) !== item.done
         ? { ...item, done: states.get(item.id)!, updatedAt: stamp.updatedAt } : item),
     }

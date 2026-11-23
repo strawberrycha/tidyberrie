@@ -12,7 +12,7 @@ import { backAction, moreItems, moreRoute, tabFor, tabs } from './navigation'
 import type { TabId } from './navigation'
 import { useMinuteClock } from './useMinuteClock'
 import { useTaskGroups } from '../features/tasks/useTasks'
-import { smartRows } from '../features/tasks/lists'
+import { overdueCount } from '../features/tasks/lists'
 import { BackupNudge } from '../features/settings/BackupNudge'
 import { LockSettings } from '../features/settings/AppLock'
 import { EmptyIllustration } from '../shared/ui/EmptyState'
@@ -25,6 +25,7 @@ const Calendar = lazy(() => import('../features/calendar/Calendar').then(m => ({
 const Budget = lazy(() => import('../features/budget/Budget').then(m => ({ default: m.Budget })))
 const BudgetExtras = lazy(() => import('../features/budget/BudgetExtras').then(m => ({ default: m.BudgetExtras })))
 const MonthlySummary = lazy(() => import('../features/budget/MonthlySummary').then(m => ({ default: m.MonthlySummary })))
+const Categories = lazy(() => import('../features/tasks/Categories').then(m => ({ default: m.Categories })))
 const More = lazy(() => import('../features/settings/More').then(m => ({ default: m.More })))
 const Appearance = lazy(() => import('../features/settings/Settings').then(m => ({ default: m.Appearance })))
 const Backups = lazy(() => import('../features/settings/BackupSettings').then(m => ({ default: m.BackupSettings })))
@@ -32,7 +33,7 @@ const Reminders = lazy(() => import('../features/reminders/Reminders').then(m =>
 
 const pages = { home: Home, tasks: Tasks, calendar: Calendar, budget: Budget, more: More }
 const morePages = {
-  trash: <Tasks trash />, reminders: <Reminders />, appearance: <Appearance />, backups: <Backups />,
+  trash: <Tasks trash />, categories: <Categories />, reminders: <Reminders />, appearance: <Appearance />, backups: <Backups />,
   security: <LockSettings />, about: <section className="settings-card"><p>Tidyberrie is your private, offline planner for Android.</p></section>,
 }
 
@@ -82,7 +83,7 @@ export function Shell() {
   const back = useRef(() => {})
   const now = useMinuteClock()
   const groups = useTaskGroups(false)?.groups
-  const overdue = useMemo(() => groups ? smartRows(groups, 'Overdue', now).length : 0, [groups, now])
+  const overdue = useMemo(() => groups ? overdueCount(groups, now) : 0, [groups, now])
   const show = useToast()
 
   useLayoutEffect(() => {
@@ -111,7 +112,7 @@ export function Shell() {
   useLayoutEffect(() => {
     const stack = history[active] ?? [location]
     back.current = () => {
-      const dialog = document.querySelector<HTMLDialogElement>('dialog[open]')
+      const dialog = [...document.querySelectorAll<HTMLDialogElement>('dialog[open]')].at(-1)
       if (dialog) {
         if (dialog.dispatchEvent(new Event('cancel', { cancelable: true })) && dialog.open) dialog.close()
         return

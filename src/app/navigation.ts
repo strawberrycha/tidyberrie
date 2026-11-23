@@ -1,4 +1,4 @@
-import { Archive, Bell, CalendarDays, Ellipsis, House, Info, ListTodo, Palette, Shield, Soup, Upload, Wallet } from 'lucide-react'
+import { Archive, Bell, CalendarDays, Ellipsis, Folder, House, Info, ListTodo, Palette, Shield, Soup, Upload, Wallet } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { features } from './features'
 
@@ -12,7 +12,7 @@ export const tabs = [
 ] as const satisfies readonly Entry[]
 export const moreGroups = [
   { label: 'Plan and Track', items: [{ id: 'meals', label: 'Meals', route: '/more/meals', icon: Soup, enabled: false }] },
-  { label: 'Organize', items: [{ id: 'trash', label: 'Trash', route: '/more/trash', icon: Archive, enabled: features.tasks }] },
+  { label: 'Organize', items: [{ id: 'trash', label: 'Trash', route: '/more/trash', icon: Archive, enabled: features.tasks }, { id: 'categories', label: 'Categories', route: '/more/categories', icon: Folder, enabled: features.tasks }] },
   { label: 'App', items: [
     { id: 'reminders', label: 'Reminders and Alarms', route: '/more/reminders', icon: Bell, enabled: true },
     { id: 'appearance', label: 'Appearance', route: '/more/appearance', icon: Palette, enabled: true },

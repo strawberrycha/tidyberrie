@@ -30,12 +30,17 @@ export function storedTask(value: TaskInput, weekStart: number) {
     endAt: value.endTime && !value.allDay ? localTimestamp(value.startDate, value.endTime) : null,
     allDay: value.allDay, color: value.color, icon: value.icon, tag: value.tag,
     priority: value.priority, status: value.status, pinned: value.pinned,
+    categoryId: value.categoryId, optional: value.optional, estimateMinutes: value.estimateMinutes,
+    actualMinutes: value.actualMinutes, originalDate: value.originalDate, rescheduleCount: value.rescheduleCount,
     repeatRule: encodeRepeat(value.repeat, value.startDate, weekStart),
     reminders: value.reminders, autoCompleteWhenSubtasksDone: value.autoCompleteWhenSubtasksDone,
   }
 }
 
+export const isOpen = (status: TaskInput['status']) => status !== 'done' && status !== 'skipped'
+
 export function completedStatus(value: TaskInput) {
+  if (value.status === 'skipped') return value.status
   if (!value.autoCompleteWhenSubtasksDone || !value.subtasks.length) return value.status
   return value.subtasks.every(item => item.done) ? 'done' : value.status === 'done' ? 'todo' : value.status
 }
@@ -56,6 +61,8 @@ export function taskValue(group: TaskGroup, fallback: string, occurrence?: strin
     color: colors.find(color => color === task.color) ?? base.color,
     icon: icons.find(icon => icon === task.icon) ?? base.icon,
     tag: task.tag, priority: task.priority, status: task.status,
+    categoryId: task.categoryId, optional: task.optional, estimateMinutes: task.estimateMinutes,
+    actualMinutes: task.actualMinutes, originalDate: task.originalDate, rescheduleCount: task.rescheduleCount,
     repeat: decodeRepeat(task.repeatRule), reminders: task.reminders.flatMap(offset => {
       const result = reminderOffset.safeParse(offset)
       return result.success ? [result.data] : []
@@ -78,7 +85,8 @@ export function occurrenceValue(base: TaskInput, occurrence: string, exception?:
   return {
     ...draft,
     repeat: base.repeat,
-    status: exception?.action === 'completed' ? 'done' : draft.status,
+    status: exception?.action === 'completed' ? 'done' : exception?.action === 'skipped' ? 'skipped' : draft.status,
+    categoryId: base.categoryId,
     subtasks: draft.subtasks.map(item => ({ ...item, done: exception?.subtaskStates[item.id] ?? false })),
   }
 }

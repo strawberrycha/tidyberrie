@@ -61,7 +61,7 @@ it('keeps a quote stable for a date, uses local greeting ranges, and reports rel
 })
 
 it('orders progress before time and excludes completed tasks', () => {
-  const rows = [row('Untimed'), row('Soon', { startTime: '09:00', allDay: false }), row('Done', { status: 'done' }), row('In progress', { status: 'doing' })]
+  const rows = [row('Untimed'), row('Soon', { startTime: '09:00', allDay: false }), row('Done', { status: 'done' }), row('In progress', { status: 'in_progress' })]
   expect(openPlan(rows).map(task => task.value.title)).toEqual(['In progress', 'Soon', 'Untimed'])
 })
 

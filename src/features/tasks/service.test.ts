@@ -4,11 +4,13 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { db, openDatabase, table } from '../../shared/db/database'
 import { metadata } from '../../shared/db/repository'
 import { emptyTask, newSubtask } from './input'
-import { smartRows } from './lists'
+import { overdueCount, smartRows } from './lists'
 import { progress, storedTask, taskValue } from './model'
 import { defaultRepeat } from './recurrence'
 import { readGroups } from './repository'
-import { changeCompletion, deleteTask, permanentlyDeleteTask, purgeTasks, restoreTask, saveTask } from './service'
+import { archiveCategory, moveCategory, saveCategory } from './categoryService'
+import { initializeSettings } from '../settings/service'
+import { changeCompletion, changeTaskStatus, duplicateTask, rescheduleTask, deleteTask, permanentlyDeleteTask, purgeTasks, restoreTask, saveTask } from './service'
 
 const today = '2026-11-22'
 const now = new Date(2026, 10, 22, 15)
@@ -19,6 +21,7 @@ const group = async () => (await readGroups())[0]
 beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(now) })
 afterEach(async () => {
   vi.useRealTimers()
+  vi.unstubAllGlobals()
   await Promise.all(db.tables.map(target => target.clear()))
 })
 
@@ -37,6 +40,60 @@ it('validates local dates and reminder times without rejecting existing overdue 
   await deleteTask(task.id)
   await restoreTask(task.id)
   expect((await group()).task.title).toBe('Updated overdue')
+})
+
+it('validates category names, reorders, and archives with an exact undo', async () => {
+  const sample = { name: '  Reading ', color: 'rose', icon: 'book' }
+  expect(() => saveCategory({ ...sample, name: ' ' })).toThrow('Enter a category name.')
+  expect(() => saveCategory({ ...sample, name: 'a'.repeat(31) })).toThrow('Use at most 30 characters.')
+  await saveCategory(sample)
+  await expect(saveCategory({ ...sample, name: 'reading' })).rejects.toThrow('already uses')
+  const reading = await table('categories').filter(item => item.name === 'Reading').first()
+  await saveCategory({ ...sample, name: 'Music' })
+  await moveCategory(reading!.id, 1)
+  const before = await table('categories').get(reading!.id)
+  const undo = await archiveCategory(reading!.id, true)
+  expect((await table('categories').get(reading!.id))?.archived).toBe(true)
+  await undo()
+  expect(await table('categories').get(reading!.id)).toEqual(before)
+  await archiveCategory(reading!.id, true)
+  await archiveCategory(reading!.id, false)
+  expect((await table('categories').get(reading!.id))?.archived).toBe(false)
+  vi.stubGlobal('matchMedia', () => ({ matches: false }))
+  await initializeSettings()
+  await saveTask({ ...draft(), categoryId: reading!.id }, 0)
+  expect((await table('settings').get({ key: 'preferences' }))?.lastCategoryId).toBe(reading!.id)
+})
+
+it('treats postponed as open, skips without counting as overdue, and changes occurrences independently', async () => {
+  await saveTask({ ...draft(), optional: true, repeat: { ...defaultRepeat, mode: 'daily' } }, 0)
+  const { task } = await group()
+  await changeTaskStatus(task.id, today, 'skipped')
+  expect((await group()).exceptions[0].action).toBe('skipped')
+  expect(smartRows(await readGroups(), 'Today', now)).toHaveLength(0)
+  const tomorrow = '2026-11-23'
+  await rescheduleTask(task.id, tomorrow, '2026-11-24', now)
+  expect(taskValue(await group(), today, tomorrow)).toMatchObject({
+    status: 'postponed', originalDate: tomorrow, startDate: '2026-11-24', rescheduleCount: 1,
+  })
+  expect(smartRows(await readGroups(), 'Upcoming', now).some(row => row.value.status === 'postponed')).toBe(true)
+  await changeTaskStatus(task.id, tomorrow, 'in_progress')
+  expect(taskValue(await group(), today, tomorrow)).toMatchObject({ status: 'in_progress', originalDate: null })
+  expect((await group()).task.status).toBe('todo')
+  expect(overdueCount(await readGroups(), new Date(2026, 10, 25, 12))).toBe(0)
+})
+
+it('duplicates overdue timed tasks into today, clears completion, and avoids an exact title match', async () => {
+  await saveTask({ ...draft(), allDay: false, startTime: '09:00', actualMinutes: 20,
+    subtasks: [{ ...child('Part'), done: true }] }, 0)
+  const { task } = await group()
+  vi.setSystemTime(new Date(2026, 10, 23, 15))
+  await saveTask({ ...draft(), startDate: '2026-11-23' }, 0)
+  const copy = await duplicateTask(task.id, 0)
+  expect(copy.value).toMatchObject({ title: 'My task (copy)', allDay: true, startTime: '', startDate: '2026-11-23',
+    status: 'todo', actualMinutes: null, rescheduleCount: 0, subtasks: [{ title: 'Part', done: false }] })
+  await copy.undo()
+  expect(await table('tasks').get(copy.id)).toBeUndefined()
 })
 
 it('creates, edits, and undoes with new or reordered subtasks', async () => {
@@ -158,7 +215,7 @@ it('preserves v1 tasks, children, exceptions and Day Themes through subsequent m
   const upgraded = openDatabase(name)
   try {
     await upgraded.open()
-    expect(upgraded.verno).toBe(8)
+    expect(upgraded.verno).toBe(9)
     expect(await upgraded.table('tasks').get(task.id)).toEqual(task)
     expect(await upgraded.table('subtasks').get(subtask.id)).toEqual(subtask)
     expect(await upgraded.table('taskExceptions').where('movedTo').equals('2026-11-23').first()).toEqual(exception)

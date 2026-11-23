@@ -1,5 +1,7 @@
 import { z } from '../../shared/db/strictValidation'
 import { iconKeys } from '../../assets/stickers/keys'
+import { normalizedStatus, statuses, taskFields, taskFieldDefaults } from './categoryData'
+export { statuses }
 import { localDate } from './recurrence'
 import { defaultRepeat, repeatSchema } from './repeatInput'
 
@@ -7,8 +9,7 @@ export const colors = ['rose', 'blush', 'peach', 'berry', 'lavender', 'mint', 'h
 export const colorLabels = ['Rose', 'Blush', 'Peach', 'Berry', 'Lavender', 'Mint', 'Honey', 'Sky']
 export const icons = iconKeys
 export const priorities = ['low', 'medium', 'high'] as const
-export const statuses = ['todo', 'doing', 'done'] as const
-export const statusLabels = { todo: 'To do', doing: 'In progress', done: 'Done' }
+export const statusLabels = { todo: 'To do', in_progress: 'In progress', done: 'Done', skipped: 'Skipped', postponed: 'Postponed' }
 export const offsets = [0, 5, 15, 30, 60, 1440] as const
 export const reminderOffset = z.literal(offsets)
 const title = z.string().trim().min(1, 'Enter a title.').max(120, 'Use at most 120 characters.')
@@ -26,8 +27,8 @@ export const subtaskInput = z.strictObject({
 export const taskInput = z.strictObject({
   title, description: z.string().max(2000), startDate: z.iso.date({ error: 'Choose a valid date.' }),
   startTime: optionalTime, endTime: optionalTime, allDay: z.boolean(),
-  color: z.enum(colors), icon: z.enum(icons), tag: z.string().trim().max(30),
-  priority: z.enum(priorities), status: z.enum(statuses), repeat: repeatSchema,
+  color: z.union([z.literal(''), z.enum(colors)]), icon: z.enum(icons), tag: z.string().trim().max(30),
+  priority: z.enum(priorities), status: normalizedStatus, ...taskFields, repeat: repeatSchema,
   reminders: z.array(reminderOffset).max(6),
   pinned: z.boolean(), autoCompleteWhenSubtasksDone: z.boolean(),
   subtasks: z.array(subtaskInput).max(100),
@@ -65,8 +66,8 @@ export function taskScheduleInput(previous?: TaskInput, now = new Date()) {
 
 export function emptyTask(date: string): TaskInput {
   return {
-    title: '', description: '', startDate: date, startTime: '', endTime: '', allDay: true,
-    color: 'rose', icon: 'check', tag: '', priority: 'medium', status: 'todo',
+    ...taskFieldDefaults, title: '', description: '', startDate: date, startTime: '', endTime: '', allDay: true,
+    color: '', icon: 'check', tag: '', priority: 'medium', status: 'todo',
     repeat: defaultRepeat, reminders: [], pinned: false, autoCompleteWhenSubtasksDone: false, subtasks: [],
   }
 }

@@ -29,9 +29,9 @@ export async function makeExport(kind: 'json' | 'encrypted' | 'csv', passphrase:
   const backup = await repository.exportBackup()
   if (kind === 'csv') {
     const rows = Object.entries(backup.data).filter(([name]) => name !== 'snapshots').flatMap(([name, records]) =>
-      records.map(record => [name, record.id, ...['title', 'name', 'source', 'category', 'person', 'amount', 'openingBalance', 'status', 'date']
+      records.map(record => [name, record.id, ...['title', 'name', 'source', 'category', 'person', 'amount', 'openingBalance', 'status', 'date', 'categoryId', 'optional', 'estimateMinutes', 'actualMinutes', 'originalDate', 'rescheduleCount']
         .map(key => String(Reflect.get(record, key) ?? '')), JSON.stringify(record)]))
-    const header = ['Table', 'ID', 'Title', 'Name', 'Source', 'Category', 'Person', 'Amount (centavos)', 'Opening (centavos)', 'Status', 'Date', 'Record JSON']
+    const header = ['Table', 'ID', 'Title', 'Name', 'Source', 'Category', 'Person', 'Amount (centavos)', 'Opening (centavos)', 'Status', 'Date', 'Category ID', 'Optional', 'Estimated minutes', 'Actual minutes', 'Original date', 'Reschedule count', 'Record JSON']
     return [header, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n') + '\r\n'
   }
   const content = JSON.stringify(backup)

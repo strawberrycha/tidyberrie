@@ -47,8 +47,8 @@ export function dailyQuote(date: string) {
 }
 
 export function openPlan(rows: TaskRow[]) {
-  return rows.filter(({ value }) => value.status !== 'done').sort((a, b) =>
-    Number(b.value.status === 'doing') - Number(a.value.status === 'doing') ||
+  return rows.filter(({ value }) => value.status !== 'done' && value.status !== 'skipped').sort((a, b) =>
+    Number(b.value.status === 'in_progress') - Number(a.value.status === 'in_progress') ||
     (a.value.startTime || '99:99').localeCompare(b.value.startTime || '99:99') ||
     a.value.title.localeCompare(b.value.title))
 }

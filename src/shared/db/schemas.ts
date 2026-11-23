@@ -2,6 +2,7 @@ import { z } from './strictValidation'
 import { centavos } from '../utils/money'
 import { themes } from '../theme/tokens'
 import { taskInput } from '../../features/tasks/input'
+import { categoryFields, defaultCategories, normalizedStatus, taskFields } from '../../features/tasks/categoryData'
 
 const id = z.uuid()
 const timestamp = z.iso.datetime({ offset: true })
@@ -21,10 +22,12 @@ export const recordSchemas = {
   tasks: base.extend({
     title: text, description: text, startAt: dateOrTime.nullable(), endAt: dateOrTime.nullable(),
     allDay: z.boolean(), color: text, icon: text, tag: text,
-    priority: z.enum(['low', 'medium', 'high']), status: z.enum(['todo', 'doing', 'done']),
+    priority: z.enum(['low', 'medium', 'high']), status: normalizedStatus,
+    ...taskFields,
     repeatRule: text.nullable(), reminders: z.array(reminder),
     autoCompleteWhenSubtasksDone: z.boolean(), pinned: z.boolean(),
   }),
+  categories: base.extend(categoryFields),
   subtasks: base.extend({ taskId: id, title: text, done: z.boolean(), order: z.int(), dueAt: dateOrTime.optional(), reminder: reminder.optional() }),
   taskExceptions: base.extend({
     taskId: id, date, action: z.enum(['skipped', 'moved', 'completed']),
@@ -56,6 +59,7 @@ export const recordSchemas = {
     key: z.enum(['preferences', 'undo-demo']), theme: z.enum(themes), storagePersistent: z.boolean().nullable(),
     budgetView: z.enum(['daily', 'monthly', 'yearly']), avatar: text, currency: z.literal('PHP'),
     yourName: z.string().trim().min(1).max(40).optional(), timeFormat: z.enum(['12h', '24h']).optional(),
+    lastCategoryId: id.nullable().optional(),
     textSize: z.literal([100, 125, 150, 200]).optional(),
     weekStart: z.int().min(0).max(6), dashboardCards: z.array(text), backupReminder,
     budgetConfigured: z.boolean().optional(), budgetCards: budgetCardsSchema.optional(),
@@ -64,6 +68,7 @@ export const recordSchemas = {
 }
 
 export const backupDataSchema = z.strictObject({
+  categories: z.array(recordSchemas.categories).default(() => defaultCategories('1970-01-01T00:00:00.000Z')),
   tasks: z.array(recordSchemas.tasks), subtasks: z.array(recordSchemas.subtasks),
   taskExceptions: z.array(recordSchemas.taskExceptions), dayThemes: z.array(recordSchemas.dayThemes),
   accounts: z.array(recordSchemas.accounts), incomes: z.array(recordSchemas.incomes),

@@ -15,6 +15,14 @@ Set-Location android
 
 Use `npm run dev` for development. Install Playwright Chromium with `npx playwright install chromium` or set `TIDY_CHROME_PATH` to an installed Chrome. The Android debug output is `android/app/build/outputs/apk/debug/app-debug.apk`. Install it on the test phone with Android Studio or adb.
 
+## Task Organizer T1 phone check
+
+1. Open More → Organize → Categories. Add a category, rename it, change the color and icon, reorder it, and archive it. Try Undo and Restore. Try reusing an active category’s name with different capitalization.
+2. Add a task with a category, Optional task, and an estimate. Confirm the next add form suggests the last category. Try None, filter by two categories, group by Category, and collapse a group.
+3. Skip a task and check the completion denominator. Move a task to a later date and check the postponed chip. Change its status and check the chip clears. Verify a repeating move affects one occurrence.
+4. Duplicate an overdue timed task. Check that the copy opens today as all-day, with unchecked subtasks and no actual time. Try Undo.
+5. At 200% text, check controls and sheets in both themes. Verify a dated task reminder after rescheduling or duplicating.
+
 ## Reminder test on Xiaomi HyperOS
 
 1. Update the installed app using the debug APK, or use `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`. Open More → Reminders and Alarms. Checking should resolve within three seconds. Follow the permission explanation if shown. If notifications were already allowed, expect no system prompt. Confirm Retry checks updates the rows after returning from Android settings.

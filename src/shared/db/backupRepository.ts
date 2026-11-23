@@ -1,8 +1,9 @@
 import { db, table } from './database'
 import { metadata } from './repository'
 import type { Backup, Records } from './schemas'
+import { backupDataSchema } from './schemas'
 
-const names = ['tasks', 'subtasks', 'taskExceptions', 'dayThemes', 'accounts', 'incomes', 'expenses', 'transfers', 'categoryBudgets', 'goals', 'debts', 'budgetHistory', 'settings', 'snapshots'] as const
+const names = ['categories', 'tasks', 'subtasks', 'taskExceptions', 'dayThemes', 'accounts', 'incomes', 'expenses', 'transfers', 'categoryBudgets', 'goals', 'debts', 'budgetHistory', 'settings', 'snapshots'] as const
 const tables = names.map(name => table(name))
 const recovery = db.table<{ id: string; snapshot?: Records['snapshots']; exportedAt?: string }, string>('recoveryDevice')
 const reminderState = db.table('reminderDevice')
@@ -13,7 +14,7 @@ async function read<K extends keyof Records>(name: K): Promise<Records[K][]> {
 
 async function readData() {
   return {
-    tasks: await read('tasks'), subtasks: await read('subtasks'), taskExceptions: await read('taskExceptions'),
+    categories: await read('categories'), tasks: await read('tasks'), subtasks: await read('subtasks'), taskExceptions: await read('taskExceptions'),
     dayThemes: await read('dayThemes'), accounts: await read('accounts'), incomes: await read('incomes'),
     expenses: await read('expenses'), transfers: await read('transfers'), budgetHistory: await read('budgetHistory'), settings: await read('settings'),
     categoryBudgets: await read('categoryBudgets'), goals: await read('goals'), debts: await read('debts'),
@@ -35,6 +36,10 @@ async function write<K extends keyof Records>(name: K, records: Records[K][]) {
       const index = 'key' in record ? { key: record.key } : { day: record.day }
       const existing = await target.get(index)
       if (existing && existing.id !== record.id) await target.delete(existing.id)
+    }
+    if (name === 'categories') {
+      const existing = await target.get(record.id)
+      if (existing && existing.updatedAt > record.updatedAt) continue
     }
     const next = 'key' in record && record.key === 'preferences'
       ? { ...record, storagePersistent: null }
@@ -98,12 +103,13 @@ export async function restoreSnapshot(id: string, day: string) {
     const safety = (await recovery.get('safety'))?.snapshot
     const snapshot = safety?.id === id ? safety : await table('snapshots').get(id)
     if (!snapshot) throw new Error('Snapshot unavailable')
+    const data = backupDataSchema.parse(snapshot.data)
     await captureSafety(day)
     await reminderState.clear()
     for (const name of names) {
       if (name === 'snapshots') continue
       await table(name).clear()
-      await write(name, snapshot.data[name])
+      await write(name, data[name])
     }
   })
 }

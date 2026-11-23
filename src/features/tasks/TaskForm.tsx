@@ -1,18 +1,21 @@
 import { useId, useRef, useState } from 'react'
+import { inlineIconSize } from '../../app/uiTokens'
 import { useMinuteClock } from '../../app/useMinuteClock'
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Check, Circle, FastForward, Play, Plus, SkipForward, Trash2 } from 'lucide-react'
 import { colorLabels, colors, newSubtask, offsets, priorities, statusLabels, statuses, taskScheduleInput } from './input'
 import type { SubtaskInput, TaskInput } from './input'
 import { IconPicker } from './IconPicker'
 import { addDays, localDate, repeatModes, weekdays } from './recurrence'
 import type { Repeat } from './recurrence'
 import { TaskDialog } from './TaskDialog'
+import { CategoryPicker, useCategories } from './Categories'
 
+const statusIcons = { todo: Circle, in_progress: Play, done: Check, skipped: SkipForward, postponed: FastForward }
 const repeatLabels = ['Once', 'Daily', 'Weekdays', 'Weekends', 'Specific days', 'Weekly', 'Monthly', 'Yearly', 'Custom interval']
 const reminderLabels = ['At scheduled time', '5 minutes before', '15 minutes before', '30 minutes before', '1 hour before', '1 day before']
 
-export function TaskForm({ initial, title, occurrence, editing = false, busy, close, save }: {
-  initial: TaskInput; title: string; occurrence?: boolean; editing?: boolean; busy: boolean; close: () => void; save: (value: TaskInput) => void
+export function TaskForm({ initial, title, occurrence, editing = false, busy, close, save, duplicate }: {
+  initial: TaskInput; title: string; occurrence?: boolean; editing?: boolean; busy: boolean; close: () => void; save: (value: TaskInput) => void; duplicate?: () => void
 }) {
   const [value, setValue] = useState(initial)
   const today = localDate(useMinuteClock())
@@ -20,6 +23,11 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
   const dateChips = [['Today', today], ['Tomorrow', addDays(today, 1)], ['Next week', addDays(today, 7)]]
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [more, setMore] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const { rows: categories, lastCategory } = useCategories()
+  const [categoryChosen, setCategoryChosen] = useState(false)
+  const categoryId = !editing && !categoryChosen && categories.some(item => !item.archived && item.id === lastCategory)
+    ? lastCategory : value.categoryId
   const prefix = useId()
   const fields = useRef(new Map<string, HTMLInputElement>())
 
@@ -64,10 +72,10 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
     if (JSON.stringify(value) === JSON.stringify(initial) || window.confirm('Discard unsaved changes?')) close()
   }
 
-  return <TaskDialog title={title} close={cancel}>
+  return <><TaskDialog title={title} close={cancel}>
     <form className="task-form" noValidate onSubmit={event => {
       event.preventDefault()
-      const result = taskScheduleInput(editing ? initial : undefined).safeParse(value)
+      const result = taskScheduleInput(editing ? initial : undefined).safeParse({ ...value, categoryId })
       if (result.success) { setErrors({}); save(result.data); return }
       const messages = Object.fromEntries(result.error.issues.map(issue => [issue.path.join('.'), issue.message]))
       setErrors(messages)
@@ -95,18 +103,34 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
           <label>End time<input {...field('endTime')} type="time" min={value.startTime || undefined} value={value.endTime} onChange={event => set('endTime', event.target.value)} />{error('endTime')}</label>
         </>}
       </div>
+      <button type="button" className="secondary" onClick={() => setPicking(true)}>Category · {categories.find(item => item.id === categoryId)?.name ?? 'None'}</button>
       <button type="button" className="secondary" aria-expanded={more} aria-controls={prefix + 'options'} onClick={() => setMore(!more)}>More options</button>
       <div className="task-options" id={prefix + 'options'} hidden={!more}>
         <label>Description<textarea {...field('description')} value={value.description} maxLength={2000} rows={3} onChange={event => set('description', event.target.value)} />{error('description')}</label>
         <div className="task-fields">
-          <label>Color<select value={value.color} onChange={event => set('color', event.target.value as TaskInput['color'])}>{colors.map((color, index) => <option key={color} value={color}>{colorLabels[index]}</option>)}</select></label>
+          <label>Color<select value={value.color} onChange={event => set('color', event.target.value as TaskInput['color'])}><option value="">Category default</option>{colors.map((color, index) => <option key={color} value={color}>{colorLabels[index]}</option>)}</select></label>
           <label>Tag<input {...field('tag')} value={value.tag} maxLength={30} onChange={event => set('tag', event.target.value)} />{error('tag')}</label>
           <label>Priority<select value={value.priority} onChange={event => set('priority', event.target.value as TaskInput['priority'])}>{priorities.map(priority => <option key={priority}>{priority}</option>)}</select></label>
-          <label>Status<select value={value.status} onChange={event => set('status', event.target.value as TaskInput['status'])}>
-            {statuses.filter(status => status !== 'done' || occurrence || value.repeat.mode === 'once').map(status => <option key={status} value={status}>{statusLabels[status]}</option>)}
-          </select></label>
+          <fieldset><legend>Status</legend>
+            {statuses.filter(status => (status !== 'postponed' || value.status === status) &&
+              (occurrence || value.repeat.mode === 'once' || (status !== 'done' && status !== 'skipped'))).map(status => {
+              const Icon = statusIcons[status]
+              return <label key={status} className="task-check"><input type="radio" name={prefix + 'status'} checked={value.status === status}
+                onChange={() => set('status', status)} /><Icon size={inlineIconSize} aria-hidden /> {statusLabels[status]}</label>
+            })}
+          </fieldset>
           <label className="task-check"><input type="checkbox" checked={value.pinned} onChange={event => set('pinned', event.target.checked)} /> Pinned</label>
         </div>
+        <label className="task-check"><input type="checkbox" role="switch" checked={value.optional}
+          onChange={event => set('optional', event.target.checked)} /> Optional task</label>
+        <p>Skipping it won't count as missed.</p>
+        <fieldset><legend>Estimated time</legend>
+          <div className="task-date-chips">{[5, 15, 30, 45, 60, 90, 120].map(minutes =>
+            <button className="secondary" type="button" key={minutes} aria-pressed={value.estimateMinutes === minutes}
+              onClick={() => set('estimateMinutes', minutes)}><span>{minutes} min</span></button>)}</div>
+          <label>Minutes <input type="number" min={1} max={1440} {...field('estimateMinutes')} value={value.estimateMinutes ?? ''}
+            onChange={event => set('estimateMinutes', event.target.value ? Number(event.target.value) : null)} />{error('estimateMinutes')}</label>
+        </fieldset>
         <IconPicker value={value.icon} change={icon => set('icon', icon)} />
         {!occurrence && <fieldset>
           <legend>Recurrence</legend>
@@ -140,6 +164,9 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
           </label>)}</div>
         </fieldset>
       </div>
+      {editing && (value.status === 'done' || title === 'Task details') && <label>Actual time (minutes)
+        <input type="number" min={0} max={1440} {...field('actualMinutes')} value={value.actualMinutes ?? ''}
+          onChange={event => set('actualMinutes', event.target.value ? Number(event.target.value) : null)} />{error('actualMinutes')}</label>}
       <fieldset className="subtask-editor">
         <legend className="task-field-label">Subtasks</legend>
         {value.subtasks.map((item, index) => <div className="subtask-edit" key={item.id}>
@@ -167,8 +194,12 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
         <button type="button" className="secondary" disabled={value.subtasks.length >= 100} onClick={() => add()}><Plus size={18} aria-hidden /> Add subtask</button>
         {!!value.subtasks.length && <label className="task-check"><input type="checkbox" checked={value.autoCompleteWhenSubtasksDone} onChange={event => set('autoCompleteWhenSubtasksDone', event.target.checked)} /> Complete automatically when all subtasks are checked</label>}
       </fieldset>
-      {!!Object.keys(errors).length && <p className="task-error" role="alert">Check the highlighted fields.</p>}
+      {duplicate && <button type="button" className="secondary" disabled={busy} onClick={duplicate}>Duplicate</button>}
+      {!!Object.keys(errors).some(key => errors[key]) && <p className="task-error" role="alert">Check the highlighted fields.</p>}
       <footer className="task-actions task-form-footer"><button className="secondary" type="button" disabled={busy} onClick={cancel}>Cancel</button><button className="primary" type="submit" disabled={busy}>Save task</button></footer>
     </form>
   </TaskDialog>
+    {picking && <CategoryPicker rows={categories} current={categoryId} close={() => setPicking(false)}
+      choose={id => { set('categoryId', id); setCategoryChosen(true); setPicking(false) }} />}
+  </>
 }
