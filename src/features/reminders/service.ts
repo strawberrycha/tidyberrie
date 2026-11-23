@@ -8,7 +8,7 @@ import { localDate } from '../tasks/recurrence'
 import * as repository from './repository'
 import type { DeviceRecord } from './repository'
 import { deadline, selectScheduler } from './schedulers'
-import type { NotificationScheduler, ReminderStatus } from './schedulers'
+import type { NotificationScheduler, PendingReminder, ReminderStatus } from './schedulers'
 import { applyDispositions, defaultLimit, minute, queueLimits, reminderWindow, snoozeTime, sorted, testKey } from './window'
 import type { Reminder } from './window'
 
@@ -17,7 +17,7 @@ const retention = 14 * day
 const limitSchema = z.literal(queueLimits)
 const reminderSchema = z.strictObject({
   key: z.string().min(1).max(120), title: z.string().max(500),
-  at: z.int().positive(), sourceAt: z.int().positive(),
+  at: z.int().positive(), sourceAt: z.int().positive(), scheduleName: z.string().max(40).optional(),
 })
 const duration = z.enum(['10-minutes', '1-hour', 'tomorrow'])
 
@@ -40,19 +40,23 @@ export function dismissReminder(input: Reminder) {
   return repository.saveRecord('state:' + reminder.key, 0, reminder.sourceAt, true)
 }
 
-export function markReminderDone(input: Reminder) {
-  const { key } = reminderSchema.parse(input)
+export function reminderTaskTarget(key: string) {
   const parts = key.split('/')
   const taskId = z.uuid().safeParse(parts[0])
   const occurrence = z.iso.date().safeParse(parts[1])
   const subject = z.union([z.literal('task'), z.uuid()]).safeParse(parts[2])
   if (parts.length !== 4 || !taskId.success || !occurrence.success || !subject.success) return
-  return changeCompletion(taskId.data, undefined, true, subject.data === 'task' ? undefined : subject.data, occurrence.data)
+  return { id: taskId.data, date: occurrence.data, child: subject.data === 'task' ? undefined : subject.data }
+}
+
+export function markReminderDone(input: Reminder) {
+  const target = reminderTaskTarget(reminderSchema.parse(input).key)
+  if (target) return changeCompletion(target.id, undefined, true, target.child, target.date)
 }
 
 export type ReminderState = {
   status?: ReminderStatus; due: Reminder[]; limit: number; testAt?: number; error?: boolean
-  pending?: { title: string; at: number }[]
+  pending?: PendingReminder[]
   lastRun?: number; result?: string; lastError?: string; cappedThrough?: number
 }
 const timeout = (): never => { throw new Error('Android did not respond in time.') }
@@ -73,7 +77,11 @@ function stateFor(groups: TaskGroup[], records: DeviceRecord[], budget: BudgetSn
     reminders.push({ key: testKey, title: 'This is your Tidyberrie test reminder.', at: test.value, sourceAt: test.sourceAt })
   }
   const adjusted = sorted(applyDispositions(reminders, repository.dispositions(records)))
-  const due = adjusted.filter(item => item.at >= now - retention && item.at <= now).reverse()
+  const taskCreated = new Map(groups.map(group => [group.task.id, Date.parse(group.task.createdAt)]))
+  const due = adjusted.filter(item => {
+    const created = taskCreated.get(item.key.split('/')[0])
+    return item.at >= now - retention && item.at <= now && (!created || item.sourceAt >= created)
+  }).reverse()
   const future = adjusted.filter(item => item.at > now && item.at <= now + retention)
   const upcoming = future.slice(0, limit)
   const cappedThrough = future.length > limit ? upcoming.at(-1)?.at : undefined
@@ -119,7 +127,8 @@ export function startReminders(publish: (state: ReminderState) => void, runtime:
         if (stopped) return
         await runtime.sync([...upcoming, ...recent], now, status, force)
         const pending = runtime.pending ? await deadline(runtime.pending(), timeout) : undefined
-        update({ pending, cappedThrough: status.notifications === 'granted' ? cappedThrough : undefined, result: status.notifications === 'granted' ? 'Reconciled' : 'Notifications off', error: false, lastError: undefined })
+        const scheduleNames = new Map(upcoming.map(item => [item.key, item.scheduleName]))
+        update({ pending: pending?.map(item => ({ ...item, scheduleName: item.key ? scheduleNames.get(item.key) : undefined })), cappedThrough: status.notifications === 'granted' ? cappedThrough : undefined, result: status.notifications === 'granted' ? 'Reconciled' : 'Notifications off', error: false, lastError: undefined })
         const date = localDate(new Date(now))
         if (lastPrune !== date) {
           lastPrune = date

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper, Moon, Sun, Sunset } from 'lucide-react'
+import { Bell, ChevronLeft, ChevronRight, CircleAlert, ListTodo, PartyPopper, Moon, Sun, Sunset } from 'lucide-react'
+import { barIconSize, inlineIconSize } from '../../app/uiTokens'
 import { features } from '../../app/features'
 import { moreRoute } from '../../app/navigation'
 import { useMinuteClock } from '../../app/useMinuteClock'
@@ -16,6 +17,7 @@ import { TaskForm } from '../tasks/TaskForm'
 import { useTaskActions } from '../tasks/useTasks'
 import type { TaskRow } from '../tasks/model'
 import { isOpen, taskValue } from '../tasks/model'
+import { missedReminders, reminderProblem } from '../reminders/reminderPresentation'
 import { useReminders } from '../reminders/useReminders'
 import { Avatar } from './Avatar'
 import { newSubtask } from '../tasks/input'
@@ -46,19 +48,19 @@ function HomeWithBudget(props: HomeProps) {
 }
 
 function HomePlan({ now, today, selected, overdue, select, budget }: HomeProps & { budget?: BudgetState }) {
-  const { preferences } = useTheme()
-  const { status, platform } = useReminders()
+  const { status, platform, due, error } = useReminders()
   const [retry, setRetry] = useState(0)
-  const problem = status?.notifications === 'denied' ? 'Reminders are off'
-    : status?.exact === 'denied' ? 'Exact alarms are off'
-    : [status?.notifications, status?.exact].includes('error') ? 'Could not check reminders'
-    : [status?.notifications, status?.exact].includes('unknown') ? 'Reminder status is unknown'
-    : platform === 'android' && status?.notifications === 'unavailable' ? 'Reminders are unavailable'
-    : undefined
+  const problem = reminderProblem(status, platform, error)
+  const missed = missedReminders(due).length
   return <div className="home-view">
     <header className="home-top">
       <h1><img src="/icon-192.png" alt="" width="32" height="32" />Tidyberrie</h1>
-      <time dateTime={now.toISOString()}>{new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h' }).format(now)}</time>
+      <Link to="/reminders" className="icon-button home-reminder-bell" aria-label="Reminders" aria-describedby="home-reminder-status">
+        <Bell size={barIconSize} aria-hidden />
+        {missed > 0 && <span className="home-reminder-badge" aria-hidden>{missed > 9 ? '9+' : missed}</span>}
+        {problem && <CircleAlert className="home-reminder-warning" size={inlineIconSize} aria-hidden />}
+      </Link>
+      <span id="home-reminder-status" className="sr-only">{missed} missed reminders{problem ? '. ' + problem : ''}</span>
     </header>
     {problem && <Link className="home-reminder" to={moreRoute('reminders')}><CircleAlert size={18} aria-hidden />{problem} – Fix</Link>}
     <HomeContent key={retry} now={now} today={today} selected={selected} select={select} overdue={overdue}

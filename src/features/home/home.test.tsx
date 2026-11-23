@@ -16,13 +16,14 @@ const fixture = vi.hoisted(() => ({
   flags: { home: true, tasks: true, calendar: false, budget: false, dayTheme: false },
   rows: [] as TaskRow[],
   check: vi.fn(),
+  missed: 0,
   reminderStatus: { notifications: 'denied', exact: 'granted' } as ReminderStatus,
   now: new Date(2026, 10, 22, 8, 50),
 }))
 vi.mock('../../app/features', () => ({ features: fixture.flags }))
 vi.mock('../../app/useMinuteClock', () => ({ useMinuteClock: () => fixture.now }))
 vi.mock('../../shared/theme/ThemeProvider', () => ({ useTheme: () => ({ preferences: { yourName: 'Cha', weekStart: 1 } }) }))
-vi.mock('../reminders/useReminders', () => ({ useReminders: () => ({ status: fixture.reminderStatus, platform: 'android' }) }))
+vi.mock('../reminders/useReminders', () => ({ useReminders: () => ({ status: fixture.reminderStatus, platform: 'android', due: Array.from({ length: fixture.missed }, (_, index) => ({ key: String(index) })) }) }))
 vi.mock('../tasks/useTasks', () => ({ useTaskActions: () => ({ check: fixture.check, busy: false }) }))
 vi.mock('../calendar/useCalendarData', () => ({ useCalendarData: () => ({
   groups: [], days: new Map([['2026-11-22', {
@@ -36,6 +37,19 @@ vi.mock('../calendar/PlannerTasks', () => ({
 vi.mock('../budget/useBudget', () => ({ useBudget: () => ({
   data: { preferences: { budgetConfigured: true, budgetView: 'monthly' }, expenses: [], accounts: [], incomes: [], transfers: [] },
 }) }))
+
+it('replaces the top-bar clock with the reminders bell and caps its visual count', () => {
+  fixture.missed = 12
+  try {
+    const { container } = render(<MemoryRouter><Home /></MemoryRouter>)
+    const bell = screen.getByRole('link', { name: 'Reminders' })
+    expect(bell).toHaveAttribute('href', '/reminders')
+    expect(bell).toHaveTextContent('9+')
+    expect(bell).toHaveAccessibleDescription('12 missed reminders. Reminders are off')
+    expect(bell.querySelector('.home-reminder-warning')).toBeInTheDocument()
+    expect(container.querySelector('.home-top time')).not.toBeInTheDocument()
+  } finally { fixture.missed = 0 }
+})
 
 function row(title: string, patch: Partial<TaskInput> = {}): TaskRow {
   const value = { ...emptyTask('2026-11-22'), title, ...patch }
@@ -86,7 +100,9 @@ it('renders the short plan, progress, reminder health, and the overdue and Show 
   expect(screen.getByRole('link', { name: '2 overdue' })).toHaveAttribute('href', '/tasks?list=Overdue')
   expect(screen.getByRole('link', { name: 'Show 1 more' })).toHaveAttribute('href', '/tasks?list=Today')
   expect(screen.getByRole('link', { name: /Reminders are off/ })).toHaveAttribute('href', '/more/reminders')
-  fireEvent.click(screen.getByRole('checkbox', { name: 'Complete First' }))
+  const control = screen.getByRole('checkbox', { name: 'Complete First' })
+  expect(control.closest('.task-row')).toHaveAttribute('data-compact', 'true')
+  fireEvent.click(control)
   expect(fixture.check).toHaveBeenCalledWith(fixture.rows[0].group.task.id, undefined, true, undefined)
 })
 

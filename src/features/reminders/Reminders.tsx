@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { CircleAlert, CircleCheck, CircleHelp } from 'lucide-react'
 import { openDeviceSettings, readDeviceInfo } from './deviceSettings'
@@ -18,8 +19,7 @@ function Status({ label, value }: { label: string; value: Access }) {
 
 export function Reminders() {
   const reminders = useReminders()
-  const { status, busy, due, platform } = reminders
-  const [limit, setLimit] = useState(20)
+  const { status, busy, platform } = reminders
   const android = platform === 'android'
   const show = useToast()
   const [device, setDevice] = useState<Awaited<ReturnType<typeof readDeviceInfo>>>()
@@ -74,7 +74,7 @@ export function Reminders() {
         <button className="secondary" onClick={() => settings('battery')}>Open battery settings</button>
       </>}
       {status?.message && <p role="alert">{status.message}</p>}
-      {reminders.error && <p role="alert">{reminders.lastError} Check Due reminders for missed alerts.</p>}
+      {reminders.error && <p role="alert">{reminders.lastError} Check the reminders inbox for missed alerts.</p>}
       <button className="secondary" onClick={reminders.refresh}>Retry checks</button>
     </section>
     <section className="settings-card wide">
@@ -111,22 +111,6 @@ export function Reminders() {
         <button className="secondary" onClick={() => settings('app')}>Open Android app settings</button>
       </div>
     </details>}
-    <section className="settings-card wide">
-      <h2>Due reminders</h2>
-      <p>Recent reminders appear here even when system notifications are turned off.</p>
-      <p role="status">{due.length ? due.length + ' due' : 'No due reminders.'}</p>
-      {due.length > 0 && <ul className="settings-grid">{due.slice(0, limit).map(item => <li key={item.key} className="settings-card wide">
-        <h3>{item.title}</h3>
-        <time dateTime={new Date(item.at).toISOString()}>{new Date(item.at).toLocaleString()}</time>
-        <div className="actions">
-          <button type="button" className="secondary" disabled={busy} onClick={() => void reminders.snooze(item, '10-minutes')}>Snooze 10 min</button>
-          <button type="button" className="secondary" disabled={busy} onClick={() => void reminders.snooze(item, '1-hour')}>Snooze 1 hour</button>
-          <button type="button" className="secondary" disabled={busy} onClick={() => void reminders.snooze(item, 'tomorrow')}>Snooze until tomorrow</button>
-          {item.key.split('/').length === 4 && <button type="button" className="secondary" disabled={busy} onClick={() => void reminders.done(item)}>Mark done</button>}
-          <button type="button" className="secondary" disabled={busy} onClick={() => void reminders.dismiss(item)}>Dismiss</button>
-        </div>
-      </li>)}</ul>}
-      {due.length > limit && <button type="button" className="secondary" onClick={() => setLimit(limit + 20)}>Show more reminders</button>}
-    </section>
+    <Link className="secondary settings-link wide" to="/reminders">Open reminders inbox</Link>
   </div>
 }

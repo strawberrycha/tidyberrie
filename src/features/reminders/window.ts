@@ -7,7 +7,7 @@ export const minute = 60_000
 export const testKey = 'tidyberrie-test'
 export const defaultLimit = 256
 export const queueLimits = [32, 64, 128, 256] as const
-export type Reminder = { key: string; title: string; at: number; sourceAt: number }
+export type Reminder = { key: string; title: string; at: number; sourceAt: number; scheduleName?: string }
 export type Disposition = { sourceAt: number; snoozeAt?: number; dismissed?: boolean }
 
 export function reminderWindow(groups: TaskGroup[], from: number, through: number, maximum = defaultLimit): Reminder[] {
@@ -25,7 +25,7 @@ export function reminderWindow(groups: TaskGroup[], from: number, through: numbe
         const at = +new Date(value.startDate + 'T' + time + ':00') - minutesBefore * minute
         if (at >= from && at <= through) {
           const key = prefix + '/' + subject + '/' + minutesBefore
-          results.set(key, { key, title, at, sourceAt: at })
+          results.set(key, { key, title, at, sourceAt: at, scheduleName: group.schedule?.name })
         }
       }
       for (const offset of value.scheduleId && !value.reminders.length ? [0] : value.reminders) {

@@ -29,6 +29,7 @@ const Schedules = lazy(() => import('../features/tasks/Schedules').then(m => ({ 
 const More = lazy(() => import('../features/settings/More').then(m => ({ default: m.More })))
 const Appearance = lazy(() => import('../features/settings/Settings').then(m => ({ default: m.Appearance })))
 const Backups = lazy(() => import('../features/settings/BackupSettings').then(m => ({ default: m.BackupSettings })))
+const ReminderInbox = lazy(() => import('../features/reminders/ReminderInbox').then(m => ({ default: m.ReminderInbox })))
 const Reminders = lazy(() => import('../features/reminders/Reminders').then(m => ({ default: m.Reminders })))
 
 const pages = { home: Home, tasks: Tasks, calendar: Calendar, budget: Budget, more: More }
@@ -54,6 +55,9 @@ function TabRoutes({ location, tab, overdue }: { location: Location; tab: typeof
           <EmptyIllustration icon={Icon} sticker={tab.id === 'budget' ? 'avatar-wallet' : 'journal'} />
           <p>{tab.label} is coming soon.</p>
         </section></>} />
+        {tab.id === 'home' && tab.enabled && <Route path="/reminders" element={<>
+          <AppBar title="Reminders" back={() => void navigate('/')} /><ReminderInbox />
+        </>} />}
         {tab.id === 'more' && moreItems.filter(item => item.enabled && item.id in morePages).map(item =>
           <Route key={item.id} path={item.route} element={<>
             {item.id !== 'schedules' && <AppBar title={item.label} back={() => void navigate("/more")} />}{morePages[item.id as keyof typeof morePages]}

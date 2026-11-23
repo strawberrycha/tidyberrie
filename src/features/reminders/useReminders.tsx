@@ -3,7 +3,7 @@ import { reminderView } from './ReminderProvider'
 import { useToast } from '../../shared/ui/Toast'
 import {
   dismissReminder, markReminderDone, openSystemSettings, reminderPlatform, requestExact, requestNotifications, scheduleTest,
-  setReminderLimit, snoozeReminder,
+  reminderTaskTarget, setReminderLimit, snoozeReminder,
 } from './service'
 
 import type { Reminder } from './window'
@@ -28,7 +28,7 @@ export function useReminders() {
   }
 
   return {
-    ...view, busy, platform: reminderPlatform,
+    ...view, busy, platform: reminderPlatform, taskTarget: reminderTaskTarget,
     notifications: () => perform(requestNotifications),
     exact: () => perform(requestExact),
     settings: () => perform(openSystemSettings),

@@ -26,6 +26,7 @@ export async function checkAccess(work: () => Promise<Access>): Promise<Access> 
   try { return await deadline(work(), () => 'unknown') }
   catch { return 'error' }
 }
+export type PendingReminder = { key?: string; title: string; at: number; scheduleName?: string }
 export type ReminderStatus = { notifications: Access; exact: Access; canPrompt?: boolean; message?: string }
 export type DeliveryClaims = { claim: (key: string, at: number) => Promise<boolean>; release: (key: string, at: number) => Promise<void> }
 export interface NotificationScheduler {
@@ -35,7 +36,7 @@ export interface NotificationScheduler {
   requestExact(): Promise<void>
   openSystemSettings(): Promise<void>
   initialize?(): Promise<void>
-  pending?(): Promise<{ title: string; at: number }[]>
+  pending?(): Promise<PendingReminder[]>
   sync(rows: Reminder[], now: number, status?: ReminderStatus, force?: boolean): Promise<void>
 }
 
@@ -114,6 +115,7 @@ export class AndroidLocalNotificationScheduler implements NotificationScheduler 
   async pending() {
     const { notifications } = await deadline(this.plugin.getPending(), bridgeTimeout)
     return notifications.filter(item => item.extra?.namespace === channelId).map(item => ({
+      key: typeof item.extra.key === 'string' ? item.extra.key : undefined,
       title: item.body ?? '', at: Number(item.extra.at ?? JSON.parse(item.extra.signature)[1]),
     })).filter(item => Number.isFinite(item.at) && item.at > this.clock()).sort((a, b) => a.at - b.at)
   }
