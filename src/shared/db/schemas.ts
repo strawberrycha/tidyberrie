@@ -1,6 +1,7 @@
 import { z } from './strictValidation'
 import { centavos } from '../utils/money'
 import { themes } from '../theme/tokens'
+import { scheduleDraft, scheduledTaskFields } from '../../features/tasks/scheduleInput'
 import { taskInput } from '../../features/tasks/input'
 import { categoryFields, defaultCategories, normalizedStatus, taskFields } from '../../features/tasks/categoryData'
 
@@ -24,9 +25,12 @@ export const recordSchemas = {
     allDay: z.boolean(), color: text, icon: text, tag: text,
     priority: z.enum(['low', 'medium', 'high']), status: normalizedStatus,
     ...taskFields,
+    ...scheduledTaskFields,
     repeatRule: text.nullable(), reminders: z.array(reminder),
     autoCompleteWhenSubtasksDone: z.boolean(), pinned: z.boolean(),
   }),
+  schedules: base.extend(scheduleDraft.shape).extend({ order: z.int() })
+    .refine(item => !item.startDate || !item.endDate || item.endDate >= item.startDate, { path: ['endDate'] }),
   categories: base.extend(categoryFields),
   subtasks: base.extend({ taskId: id, title: text, done: z.boolean(), order: z.int(), dueAt: dateOrTime.optional(), reminder: reminder.optional() }),
   taskExceptions: base.extend({
@@ -73,6 +77,10 @@ const backupCategories = z.array(recordSchemas.categories).refine(items => {
 }, 'Active category names must be unique.')
 
 export const backupDataSchema = z.strictObject({
+  schedules: z.array(recordSchemas.schedules).refine(items => {
+    const active = items.filter(item => !item.deletedAt).map(item => item.name.toLowerCase())
+    return new Set(active).size === active.length
+  }, 'Active schedule names must be unique.').default([]),
   categories: backupCategories.default(() => defaultCategories('1970-01-01T00:00:00.000Z')),
   tasks: z.array(recordSchemas.tasks), subtasks: z.array(recordSchemas.subtasks),
   taskExceptions: z.array(recordSchemas.taskExceptions), dayThemes: z.array(recordSchemas.dayThemes),

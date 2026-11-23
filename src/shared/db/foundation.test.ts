@@ -41,10 +41,12 @@ it('imports category-free v1 backups and exports the new columns', async () => {
   const backup = await exportBackup()
   const data: Record<string, unknown> = { ...backup.data }
   delete data.categories
+  delete data.schedules
   const task = { ...metadata(), ...storedTask({ ...emptyTask('2024-02-29'), title: 'Legacy task' }, 0) }
   data.tasks = [{ ...task, status: 'doing', categoryId: undefined, originalDate: undefined, estimateMinutes: undefined }]
   const decoded = decodeBackup(JSON.stringify({ ...backup, data }))
   expect(decoded.data.categories).toHaveLength(10)
+  expect(decoded.data.schedules).toEqual([])
   await importBackup(decoded, 'replace')
   expect(await table('tasks').get(task.id)).toMatchObject({ status: 'in_progress', categoryId: null, estimateMinutes: null })
   expect(await makeExport('csv', '')).toContain('Estimated minutes')

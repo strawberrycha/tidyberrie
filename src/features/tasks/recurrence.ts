@@ -15,6 +15,19 @@ export function addDays(date: string, days: number) {
   return key(value)
 }
 
+export function scheduleDates(schedule: {
+  days: number[]; startDate: string | null; endDate: string | null; paused: boolean; deletedAt: string | null
+}, from: string, through: string) {
+  if (schedule.paused || schedule.deletedAt) return []
+  const first = schedule.startDate && schedule.startDate > from ? schedule.startDate : from
+  const last = schedule.endDate && schedule.endDate < through ? schedule.endDate : through
+  const dates: string[] = []
+  for (let date = first; date <= last; date = addDays(date, 1)) {
+    if (schedule.days.includes(ordinal(date).getUTCDay())) dates.push(date)
+  }
+  return dates
+}
+
 export function localDate(now = new Date()) {
   return [String(now.getFullYear()).padStart(4, '0'), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-')
 }

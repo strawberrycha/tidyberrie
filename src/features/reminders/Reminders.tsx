@@ -80,6 +80,7 @@ export function Reminders() {
     <section className="settings-card wide">
       <h2>Tests and diagnostics</h2>
       <p>Scheduled reminders · {reminders.pending?.length ?? 'Unknown'}</p>
+      {reminders.cappedThrough && <p>Reminders are scheduled through {new Date(reminders.cappedThrough).toLocaleDateString()}. Open the app to extend.</p>}
       <p>Last run · {formatTime(reminders.lastRun)} · {reminders.result ?? '—'}</p>
       {reminders.lastError && <p>Last error · {reminders.lastError}</p>}
       {device && <p>Tidyberrie {device.appVersion} · Android {device.androidVersion} · {device.model}</p>}

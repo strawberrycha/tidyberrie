@@ -3,7 +3,7 @@ import { metadata } from './repository'
 import type { Backup, Records } from './schemas'
 import { backupDataSchema } from './schemas'
 
-const names = ['categories', 'tasks', 'subtasks', 'taskExceptions', 'dayThemes', 'accounts', 'incomes', 'expenses', 'transfers', 'categoryBudgets', 'goals', 'debts', 'budgetHistory', 'settings', 'snapshots'] as const
+const names = ['schedules', 'categories', 'tasks', 'subtasks', 'taskExceptions', 'dayThemes', 'accounts', 'incomes', 'expenses', 'transfers', 'categoryBudgets', 'goals', 'debts', 'budgetHistory', 'settings', 'snapshots'] as const
 const tables = names.map(name => table(name))
 const recovery = db.table<{ id: string; snapshot?: Records['snapshots']; exportedAt?: string }, string>('recoveryDevice')
 const reminderState = db.table('reminderDevice')
@@ -14,7 +14,7 @@ async function read<K extends keyof Records>(name: K): Promise<Records[K][]> {
 
 async function readData() {
   return {
-    categories: await read('categories'), tasks: await read('tasks'), subtasks: await read('subtasks'), taskExceptions: await read('taskExceptions'),
+    schedules: await read('schedules'), categories: await read('categories'), tasks: await read('tasks'), subtasks: await read('subtasks'), taskExceptions: await read('taskExceptions'),
     dayThemes: await read('dayThemes'), accounts: await read('accounts'), incomes: await read('incomes'),
     expenses: await read('expenses'), transfers: await read('transfers'), budgetHistory: await read('budgetHistory'), settings: await read('settings'),
     categoryBudgets: await read('categoryBudgets'), goals: await read('goals'), debts: await read('debts'),

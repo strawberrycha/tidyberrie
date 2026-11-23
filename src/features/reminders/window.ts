@@ -5,7 +5,7 @@ import type { TaskGroup } from '../tasks/model'
 
 export const minute = 60_000
 export const testKey = 'tidyberrie-test'
-export const defaultLimit = 64
+export const defaultLimit = 256
 export const queueLimits = [32, 64, 128, 256] as const
 export type Reminder = { key: string; title: string; at: number; sourceAt: number }
 export type Disposition = { sourceAt: number; snoozeAt?: number; dismissed?: boolean }
@@ -18,7 +18,7 @@ export function reminderWindow(groups: TaskGroup[], from: number, through: numbe
   const results = new Map<string, Reminder>()
   for (const day of days.values()) {
     for (const { group, occurrence, value } of day.rows) {
-      if (value.status === 'done') continue
+      if (value.status === 'done' || value.status === 'skipped' || (value.scheduleId && !value.alertNotify)) continue
       const prefix = group.task.id + '/' + (occurrence ?? value.startDate)
       function collect(subject: string, title: string, time: string, minutesBefore: number) {
         if (!time || !offsets.some(offset => offset === minutesBefore)) return
@@ -28,7 +28,7 @@ export function reminderWindow(groups: TaskGroup[], from: number, through: numbe
           results.set(key, { key, title, at, sourceAt: at })
         }
       }
-      for (const offset of value.reminders) {
+      for (const offset of value.scheduleId && !value.reminders.length ? [0] : value.reminders) {
         collect('task', value.title, value.allDay ? '09:00' : value.startTime || '09:00', offset)
       }
       for (const subtask of value.subtasks) {

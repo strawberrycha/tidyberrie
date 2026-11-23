@@ -53,7 +53,7 @@ export function markReminderDone(input: Reminder) {
 export type ReminderState = {
   status?: ReminderStatus; due: Reminder[]; limit: number; testAt?: number; error?: boolean
   pending?: { title: string; at: number }[]
-  lastRun?: number; result?: string; lastError?: string
+  lastRun?: number; result?: string; lastError?: string; cappedThrough?: number
 }
 const timeout = (): never => { throw new Error('Android did not respond in time.') }
 
@@ -74,10 +74,12 @@ function stateFor(groups: TaskGroup[], records: DeviceRecord[], budget: BudgetSn
   }
   const adjusted = sorted(applyDispositions(reminders, repository.dispositions(records)))
   const due = adjusted.filter(item => item.at >= now - retention && item.at <= now).reverse()
-  const upcoming = adjusted.filter(item => item.at > now).slice(0, limit)
+  const future = adjusted.filter(item => item.at > now && item.at <= now + retention)
+  const upcoming = future.slice(0, limit)
+  const cappedThrough = future.length > limit ? upcoming.at(-1)?.at : undefined
   const testReminder = adjusted.find(item => item.key === testKey && item.at > now)
   if (testReminder && !upcoming.includes(testReminder)) upcoming.splice(limit - 1, 1, testReminder)
-  return { due, upcoming, limit, testAt: testReminder?.at }
+  return { due, upcoming, limit, cappedThrough, testAt: testReminder?.at }
 }
 
 let scheduleWork = Promise.resolve()
@@ -106,18 +108,18 @@ export function startReminders(publish: (state: ReminderState) => void, runtime:
       const force = forcePending
       forcePending = false
       const now = Date.now()
-      const { due, upcoming, limit, testAt } = stateFor(groups, records, budget, now)
-      update({ due, limit, testAt, lastRun: now })
+      const { due, upcoming, limit, cappedThrough, testAt } = stateFor(groups, records, budget, now)
+      update({ due, limit, testAt, cappedThrough: undefined, lastRun: now })
       try {
         const status = await runtime.status()
         if (stopped) return
         update({ status })
-        const recent = due.filter(item => item.at >= now - (runtime.platform === 'android' ? day : minute))
+        const recent = runtime.platform === 'web' ? due.filter(item => item.at >= now - minute) : []
         if (runtime.initialize) await deadline(runtime.initialize(), timeout)
         if (stopped) return
         await runtime.sync([...upcoming, ...recent], now, status, force)
         const pending = runtime.pending ? await deadline(runtime.pending(), timeout) : undefined
-        update({ pending, result: status.notifications === 'granted' ? 'Reconciled' : 'Notifications off', error: false, lastError: undefined })
+        update({ pending, cappedThrough: status.notifications === 'granted' ? cappedThrough : undefined, result: status.notifications === 'granted' ? 'Reconciled' : 'Notifications off', error: false, lastError: undefined })
         const date = localDate(new Date(now))
         if (lastPrune !== date) {
           lastPrune = date

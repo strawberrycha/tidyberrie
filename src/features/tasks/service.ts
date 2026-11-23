@@ -3,7 +3,7 @@ import { newSubtask, taskInput, taskScheduleInput } from './input'
 import type { TaskInput } from './input'
 import { completedStatus, localTimestamp, storedTask, taskValue } from './model'
 import type { TaskGroup } from './model'
-import { expandDates, localDate } from './recurrence'
+import { expandDates, localDate, scheduleDates } from './recurrence'
 import * as repository from './repository'
 
 const uuid = z.uuid()
@@ -29,9 +29,10 @@ function activeGroup(group?: TaskGroup) {
 type Metadata = Pick<TaskGroup['task'], 'id' | 'createdAt' | 'updatedAt' | 'deletedAt'>
 
 function occurrenceRecord(group: TaskGroup, date: string, value: TaskInput, stamp: Metadata, mode: 'edit' | 'status' | 'check' | 'skip') {
-  if (!group.task.repeatRule) throw new Error('Task does not repeat')
+  if (!group.task.repeatRule && !group.schedule) throw new Error('Task does not repeat')
   const existing = group.exceptions.find(item => item.date === date && !item.deletedAt)
-  if (!existing && !expandDates(group.task.repeatRule, group.task.startAt?.slice(0, 10) ?? date, date, date).length) {
+  if (!existing && !(group.schedule ? scheduleDates(group.schedule, date, date)
+    : expandDates(group.task.repeatRule!, group.task.startAt?.slice(0, 10) ?? date, date, date)).length) {
     throw new Error('Occurrence unavailable')
   }
   const previous = mode === 'edit' ? { ...value, status: completedStatus(value) } : value
@@ -54,8 +55,12 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
     occurrenceDate.parse(occurrence)
     if (!id) throw new Error('Occurrence requires a task')
   }
-  return repository.changeGroup(id, (group, stamp) => {
+  return repository.changeGroup(id, async (group, stamp) => {
     if (id) group = activeGroup(group)
+    if (value.scheduleId) {
+      const schedule = await repository.readSchedule(value.scheduleId)
+      if (!schedule || schedule.deletedAt) throw new Error('Choose an active schedule.')
+    }
     if (group) taskScheduleInput(taskValue(group, localDate(), occurrence)).parse(value)
     if (group) {
       const previous = taskValue(group, localDate(), occurrence)
@@ -63,7 +68,7 @@ export function saveTask(input: TaskInput, weekStart: number, id?: string, occur
     }
     if (occurrence && group) return occurrenceRecord(group, occurrence, value, stamp, 'edit')
     const base = storedTask(value, weekStart)
-    const recurring = !!base.repeatRule
+    const recurring = !!base.repeatRule || !!base.scheduleId
     const status = recurring ? (value.status === 'done' ? 'todo' : value.status) : completedStatus(value)
     const task = { ...stamp, ...group?.task, ...base, updatedAt: stamp.updatedAt, status }
     const previous = new Map(group?.subtasks.map(item => [item.id, item]))
@@ -93,7 +98,7 @@ export function changeTaskStatus(id: string, occurrence: string | undefined, sta
     const group = activeGroup(previous)
     const value = { ...taskValue(group, localDate(), occurrence), status, originalDate: null }
     if (occurrence) return occurrenceRecord(group, occurrence, value, stamp, 'status')
-    if (group.task.repeatRule) throw new Error('Choose a repeating occurrence.')
+    if (group.task.repeatRule || group.task.scheduleId) throw new Error('Choose a repeating occurrence.')
     return { ...group, task: { ...group.task, status, originalDate: null, updatedAt: stamp.updatedAt } }
   })
 }
@@ -106,8 +111,10 @@ export function rescheduleTask(id: string, occurrence: string | undefined, date:
   if (date < today) throw new Error('Pick today or a later date.')
   return repository.changeGroup(id, (previous, stamp) => {
     const group = activeGroup(previous)
-    if (group.task.repeatRule && !occurrence) throw new Error('Choose a repeating occurrence.')
+    if ((group.task.repeatRule || group.task.scheduleId) && !occurrence) throw new Error('Choose a repeating occurrence.')
     const value = taskValue(group, today, occurrence)
+    if (group.schedule && ((group.schedule.startDate && date < group.schedule.startDate) ||
+      (group.schedule.endDate && date > group.schedule.endDate))) throw new Error('Pick a date within the schedule range.')
     if (date > value.startDate) {
       value.originalDate ??= value.startDate
       value.rescheduleCount++
@@ -115,6 +122,7 @@ export function rescheduleTask(id: string, occurrence: string | undefined, date:
     }
     value.startDate = date
     if (elapsedStart(value, date, now)) {
+      if (value.scheduleId) throw new Error('That time has already passed. Pick a later time.')
       value.allDay = true
       value.startTime = ''
       value.endTime = ''
@@ -190,7 +198,7 @@ export async function applyBulkTaskChange(input: TaskTarget[], request: BulkChan
     let timeRemoved = 0
     for (const { id, occurrence } of targets) {
       const group = activeGroup(await repository.readGroup(id))
-      if (group.task.repeatRule && !occurrence && !bySeries) throw new Error('Choose a repeating occurrence.')
+      if ((group.task.repeatRule || group.task.scheduleId) && !occurrence && !bySeries) throw new Error('Choose a repeating occurrence.')
       switch (action.kind) {
         case 'done': undos.push(await changeCompletion(id, occurrence, true)); break
         case 'skip': undos.push(await changeTaskStatus(id, occurrence, 'skipped')); break
@@ -230,7 +238,7 @@ export function changeCompletion(id: string, occurrence: string | undefined, don
   z.boolean().parse(done)
   return repository.changeGroup(id, (previous, stamp) => {
     const group = activeGroup(previous)
-    const date = occurrence ?? (group.task.repeatRule ? reminderDate : undefined)
+    const date = occurrence ?? ((group.task.repeatRule || group.task.scheduleId) ? reminderDate : undefined)
     const value = taskValue(group, localDate(), date)
     if (subtaskId) {
       const item = value.subtasks.find(item => item.id === subtaskId)

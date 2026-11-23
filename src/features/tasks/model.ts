@@ -6,7 +6,7 @@ import { decodeRepeat, encodeRepeat } from './recurrence'
 export type Task = Records['tasks']
 export type Subtask = Records['subtasks']
 export type TaskException = Records['taskExceptions']
-export type TaskGroup = { task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
+export type TaskGroup = { schedule?: Records['schedules']; task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
 export type TaskRow = { group: TaskGroup; occurrence?: string; value: TaskInput }
 
 export function timeOf(value?: string | null) {
@@ -30,9 +30,10 @@ export function storedTask(value: TaskInput, weekStart: number) {
     endAt: value.endTime && !value.allDay ? localTimestamp(value.startDate, value.endTime) : null,
     allDay: value.allDay, color: value.color, icon: value.icon, tag: value.tag,
     priority: value.priority, status: value.status, pinned: value.pinned,
+    scheduleId: value.scheduleId, alertNotify: value.alertNotify, alertAlarm: value.alertAlarm,
     categoryId: value.categoryId, optional: value.optional, estimateMinutes: value.estimateMinutes,
     actualMinutes: value.actualMinutes, originalDate: value.originalDate, rescheduleCount: value.rescheduleCount,
-    repeatRule: encodeRepeat(value.repeat, value.startDate, weekStart),
+    repeatRule: value.scheduleId ? null : encodeRepeat(value.repeat, value.startDate, weekStart),
     reminders: value.reminders, autoCompleteWhenSubtasksDone: value.autoCompleteWhenSubtasksDone,
   }
 }
@@ -61,6 +62,7 @@ export function taskValue(group: TaskGroup, fallback: string, occurrence?: strin
     color: colors.find(color => color === task.color) ?? base.color,
     icon: icons.find(icon => icon === task.icon) ?? base.icon,
     tag: task.tag, priority: task.priority, status: task.status,
+    scheduleId: task.scheduleId, alertNotify: task.alertNotify, alertAlarm: task.alertAlarm,
     categoryId: task.categoryId, optional: task.optional, estimateMinutes: task.estimateMinutes,
     actualMinutes: task.actualMinutes, originalDate: task.originalDate, rescheduleCount: task.rescheduleCount,
     repeat: decodeRepeat(task.repeatRule), reminders: task.reminders.flatMap(offset => {
@@ -87,6 +89,7 @@ export function occurrenceValue(base: TaskInput, occurrence: string, exception?:
     repeat: base.repeat,
     status: exception?.action === 'completed' ? 'done' : exception?.action === 'skipped' ? 'skipped' : draft.status,
     categoryId: base.categoryId,
+    scheduleId: base.scheduleId,
     subtasks: draft.subtasks.map(item => ({ ...item, done: exception?.subtaskStates[item.id] ?? false })),
   }
 }

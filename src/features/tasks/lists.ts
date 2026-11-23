@@ -1,6 +1,6 @@
 import { isOpen, occurrenceValue, taskValue } from './model'
 import type { TaskGroup, TaskRow } from './model'
-import { addDays, expandDates, localDate, nextOccurrence } from './recurrence'
+import { addDays, expandDates, localDate, nextOccurrence, scheduleDates } from './recurrence'
 
 export const smartLists = ['Today', 'Upcoming', 'Overdue', 'Pinned', 'Completed', 'All'] as const
 export type SmartList = typeof smartLists[number]
@@ -19,7 +19,8 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
       if (list === 'All' || base.pinned) rows.push({ group, value: base })
       continue
     }
-    if (!task.repeatRule) {
+    if (task.scheduleId && (!group.schedule || group.schedule.paused || group.schedule.deletedAt)) continue
+    if (!task.repeatRule && !task.scheduleId) {
       if (list === 'Completed' ? base.status === 'done'
         : list === 'Overdue' ? !!task.startAt && overduePage === 0 && overdue(base, today, time)
         : task.startAt && base.startDate >= from && base.startDate <= through && isOpen(base.status)) {
@@ -30,7 +31,7 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
     const exceptions = new Map(group.exceptions.filter(item => !item.deletedAt).map(item => [item.date, item]))
     const candidates = new Set(list === 'Completed'
       ? [...exceptions.values()].filter(item => item.action === 'completed').map(item => item.date)
-      : expandDates(task.repeatRule, base.startDate, from, through))
+      : group.schedule ? scheduleDates(group.schedule, from, through) : expandDates(task.repeatRule!, base.startDate, from, through))
     if (list !== 'Completed') {
       for (const item of exceptions.values()) {
         const date = item.movedTo?.slice(0, 10)
@@ -51,7 +52,7 @@ export function smartRows(groups: TaskGroup[], list: SmartList, now = new Date()
 export function overdue(value: TaskRow['value'], today: string, time: string) {
   const dueTime = value.endTime || value.startTime
   return isOpen(value.status) && (value.startDate < today || (
-    value.startDate === today && !value.allDay && !!dueTime && dueTime < time
+    !value.scheduleId && value.startDate === today && !value.allDay && !!dueTime && dueTime < time
   ))
 }
 
@@ -60,7 +61,16 @@ export function overdueCount(groups: TaskGroup[], now: Date) {
 }
 
 export function actionDate(row: TaskRow, now = new Date()) {
-  if (row.occurrence || !row.group.task.repeatRule) return row.occurrence
+  if (row.occurrence) return row.occurrence
+  if (row.group.task.scheduleId) {
+    const schedule = row.group.schedule
+    if (!schedule) return
+    const today = localDate(now)
+    const first = schedule.startDate && schedule.startDate > today ? schedule.startDate : today
+    return scheduleDates(schedule, first, addDays(first, 14)).find(date =>
+      !row.group.exceptions.some(item => !item.deletedAt && date === item.date && item.action !== 'moved'))
+  }
+  if (!row.group.task.repeatRule) return
   const today = localDate(now)
   const start = row.value.startDate
   const exceptions = row.group.exceptions.filter(item => !item.deletedAt)

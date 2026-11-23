@@ -1,4 +1,5 @@
 import { z } from '../../shared/db/strictValidation'
+import { scheduledTaskFields } from './scheduleInput'
 import { iconKeys } from '../../assets/stickers/keys'
 import { normalizedStatus, statuses, taskFields, taskFieldDefaults } from './categoryData'
 export { statuses }
@@ -28,11 +29,14 @@ export const taskInput = z.strictObject({
   title, description: z.string().max(2000), startDate: z.iso.date({ error: 'Choose a valid date.' }),
   startTime: optionalTime, endTime: optionalTime, allDay: z.boolean(),
   color: z.union([z.literal(''), z.enum(colors)]), icon: z.enum(icons), tag: z.string().trim().max(30),
-  priority: z.enum(priorities), status: normalizedStatus, ...taskFields, repeat: repeatSchema,
+  priority: z.enum(priorities), status: normalizedStatus, ...taskFields, ...scheduledTaskFields, repeat: repeatSchema,
   reminders: z.array(reminderOffset).max(6),
   pinned: z.boolean(), autoCompleteWhenSubtasksDone: z.boolean(),
   subtasks: z.array(subtaskInput).max(100),
 }).superRefine((value, context) => {
+  if (value.scheduleId && (value.allDay || !value.startTime)) {
+    context.addIssue({ code: 'custom', path: ['startTime'], message: 'Enter a start time for the schedule.' })
+  }
   if (!value.allDay && value.endTime && (!value.startTime || value.endTime < value.startTime)) {
     context.addIssue({ code: 'custom', path: ['endTime'], message: 'End time must be at or after the start time.' })
   }
@@ -66,7 +70,7 @@ export function taskScheduleInput(previous?: TaskInput, now = new Date()) {
 
 export function emptyTask(date: string): TaskInput {
   return {
-    ...taskFieldDefaults, title: '', description: '', startDate: date, startTime: '', endTime: '', allDay: true,
+    ...taskFieldDefaults, scheduleId: null, alertNotify: false, alertAlarm: false, title: '', description: '', startDate: date, startTime: '', endTime: '', allDay: true,
     color: '', icon: 'check', tag: '', priority: 'medium', status: 'todo',
     repeat: defaultRepeat, reminders: [], pinned: false, autoCompleteWhenSubtasksDone: false, subtasks: [],
   }

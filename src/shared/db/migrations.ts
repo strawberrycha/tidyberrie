@@ -44,4 +44,14 @@ export function registerMigrations(db: Dexie) {
     if (!await tx.table('categories').count()) await tx.table('categories').bulkAdd(defaultCategories())
   })
   db.on('populate', tx => tx.table('categories').bulkAdd(defaultCategories()))
+  db.version(10).stores({
+    schedules: 'id,order,deletedAt',
+    tasks: 'id,startAt,endAt,status,deletedAt,categoryId,scheduleId',
+  }).upgrade(async tx => {
+    await tx.table('tasks').toCollection().modify(task => {
+      task.scheduleId = null
+      task.alertNotify = (task.reminders?.length ?? 0) > 0
+      task.alertAlarm = false
+    })
+  })
 }

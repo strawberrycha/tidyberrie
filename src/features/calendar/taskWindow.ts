@@ -1,6 +1,6 @@
 import { occurrenceValue, taskValue } from '../tasks/model'
 import type { TaskGroup, TaskRow } from '../tasks/model'
-import { expandDates } from '../tasks/recurrence'
+import { expandDates, scheduleDates } from '../tasks/recurrence'
 import type { DateWindow } from './dates'
 
 export type DaySummary = { rows: TaskRow[]; done: number; colors: TaskRow['value']['color'][] }
@@ -31,15 +31,17 @@ export function summarizeTasks(groups: TaskGroup[], { from, through }: DateWindo
   for (const group of groups) {
     if (group.task.deletedAt || !group.task.startAt) continue
     const base = taskValue(group, from)
-    if (!group.task.repeatRule) {
+    if (group.task.scheduleId && (!group.schedule || group.schedule.paused || group.schedule.deletedAt)) continue
+    if (!group.task.repeatRule && !group.task.scheduleId) {
       add({ group, value: base })
       continue
     }
     const exceptions = new Map(group.exceptions.filter(item => !item.deletedAt).map(item => [item.date, item]))
-    const occurrences = new Set(expandDates(group.task.repeatRule, base.startDate, from, through))
+    const occurrences = new Set(group.schedule ? scheduleDates(group.schedule, from, through)
+      : group.task.repeatRule ? expandDates(group.task.repeatRule, base.startDate, from, through) : [])
     for (const item of exceptions.values()) {
       const target = item.movedTo?.slice(0, 10)
-      if (target && target >= from && target <= through) occurrences.add(item.date)
+      if (target && (!group.schedule || scheduleDates(group.schedule, item.date, item.date).length > 0) && target >= from && target <= through) occurrences.add(item.date)
     }
     for (const occurrence of occurrences) {
       const exception = exceptions.get(occurrence)

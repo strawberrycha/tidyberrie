@@ -278,8 +278,8 @@ it('preserves v1 tasks, children, exceptions and Day Themes through subsequent m
   const upgraded = openDatabase(name)
   try {
     await upgraded.open()
-    expect(upgraded.verno).toBe(9)
-    expect(await upgraded.table('tasks').get(task.id)).toEqual(task)
+    expect(upgraded.verno).toBe(10)
+    expect(await upgraded.table('tasks').get(task.id)).toEqual({ ...task, alertNotify: task.reminders.length > 0 })
     expect(await upgraded.table('subtasks').get(subtask.id)).toEqual(subtask)
     expect(await upgraded.table('taskExceptions').where('movedTo').equals('2026-11-23').first()).toEqual(exception)
     expect(await upgraded.table('dayThemes').get(theme.id)).toEqual(theme)

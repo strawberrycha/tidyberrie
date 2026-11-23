@@ -9,16 +9,19 @@ const subtasks = table('subtasks')
 const exceptions = table('taskExceptions')
 const settings = table('settings')
 const categories = table('categories')
+const schedules = table('schedules')
 const tables = [tasks, subtasks, exceptions]
-export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', [...tables, categories], operation)
+export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', [...tables, categories, schedules], operation)
+export const readSchedule = (id: string) => schedules.get(id)
 export const readCategory = (id: string) => categories.get(id)
 export const taskTitles = async (date: string) => (await tasks.filter(item => !item.deletedAt && item.startAt?.slice(0, 10) === date).toArray()).map(item => item.title)
 
 export async function readGroups(deleted = false): Promise<TaskGroup[]> {
-  return db.transaction('r', tables, async () => {
+  return db.transaction('r', [...tables, schedules], async () => {
     const items = deleted
       ? await tasks.where('deletedAt').above('').toArray()
       : await tasks.filter(item => item.deletedAt === null).toArray()
+    const linked = new Map((await schedules.toArray()).map(schedule => [schedule.id, schedule]))
     const ids = items.map(item => item.id)
     const children = await subtasks.where('taskId').anyOf(ids).toArray()
     const changes = await exceptions.where('taskId').anyOf(ids).toArray()
@@ -33,7 +36,7 @@ export async function readGroups(deleted = false): Promise<TaskGroup[]> {
     }
     const childGroups = byParent(children)
     const changeGroups = byParent(changes)
-    return items.map(task => ({ task, subtasks: childGroups.get(task.id) ?? [], exceptions: changeGroups.get(task.id) ?? [] }))
+    return items.map(task => ({ task, schedule: task.scheduleId ? linked.get(task.scheduleId) : undefined, subtasks: childGroups.get(task.id) ?? [], exceptions: changeGroups.get(task.id) ?? [] }))
   })
 }
 
@@ -45,7 +48,7 @@ export function watchGroups(deleted: boolean, next: (groups: TaskGroup[]) => voi
 export async function readGroup(id: string): Promise<TaskGroup | undefined> {
   const task = await tasks.get(id)
   if (!task) return
-  return { task, subtasks: await subtasks.where('taskId').equals(id).toArray(), exceptions: await exceptions.where('taskId').equals(id).toArray() }
+  return { task, schedule: task.scheduleId ? await schedules.get(task.scheduleId) : undefined, subtasks: await subtasks.where('taskId').equals(id).toArray(), exceptions: await exceptions.where('taskId').equals(id).toArray() }
 }
 
 async function writeGroup(id: string, group?: TaskGroup) {
@@ -74,18 +77,18 @@ async function reconcile<T extends Subtask | TaskException>(
   if (next.length) await target.bulkPut(next)
 }
 
-export function changeGroup(id: string | undefined, mutate: (previous: TaskGroup | undefined, stamp: ReturnType<typeof metadata>) => TaskGroup, rememberCategory = false) {
-  return db.transaction('rw', rememberCategory ? [...tables, settings] : tables, async () => {
+export function changeGroup(id: string | undefined, mutate: (previous: TaskGroup | undefined, stamp: ReturnType<typeof metadata>) => TaskGroup | Promise<TaskGroup>, rememberCategory = false) {
+  return db.transaction('rw', rememberCategory ? [...tables, settings, schedules] : [...tables, schedules], async () => {
     const previous = id ? await readGroup(id) : undefined
     const stamp = metadata()
-    const next = mutate(previous, stamp)
+    const next = await mutate(previous, stamp)
     await writeGroup(next.task.id, next)
     if (rememberCategory) {
       const preferences = await settings.get({ key: 'preferences' })
       if (preferences) await settings.update(preferences.id, { lastCategoryId: next.task.categoryId, updatedAt: stamp.updatedAt })
     }
     const committed = await readGroup(next.task.id)
-    return async () => db.transaction('rw', tables, async () => {
+    return async () => db.transaction('rw', [...tables, schedules], async () => {
       const current = await readGroup(next.task.id)
       if (JSON.stringify(current) !== JSON.stringify(committed)) throw new Error('Task changed')
       await writeGroup(next.task.id, previous)
