@@ -10,7 +10,7 @@ import { defaultRepeat } from './recurrence'
 import { readGroups } from './repository'
 import { archiveCategory, moveCategory, saveCategory } from './categoryService'
 import { initializeSettings } from '../settings/service'
-import { changeCompletion, changeTaskStatus, duplicateTask, rescheduleTask, deleteTask, permanentlyDeleteTask, purgeTasks, restoreTask, saveTask } from './service'
+import { applyBulkTaskChange, watchTasks, changeCompletion, changeTaskStatus, duplicateTask, rescheduleTask, deleteTask, permanentlyDeleteTask, purgeTasks, restoreTask, saveTask } from './service'
 
 const today = '2026-11-22'
 const now = new Date(2026, 10, 22, 15)
@@ -94,6 +94,69 @@ it('duplicates overdue timed tasks into today, clears completion, and avoids an 
     status: 'todo', actualMinutes: null, rescheduleCount: 0, subtasks: [{ title: 'Part', done: false }] })
   await copy.undo()
   expect(await table('tasks').get(copy.id)).toBeUndefined()
+})
+
+it('commits bulk changes and undo as one reminder watch notification each', async () => {
+  const [a, b] = ['First', 'Second']
+  await saveTask({ ...draft(), title: a, reminders: [0] }, 0)
+  await saveTask({ ...draft(), title: b, reminders: [0] }, 0)
+  const previous = await readGroups()
+  const targets = previous.map(item => ({ id: item.task.id }))
+  const reconcile = vi.fn()
+  const stop = watchTasks(false, reconcile, vi.fn())
+  try {
+    await vi.waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1))
+    reconcile.mockClear()
+    const done = await applyBulkTaskChange(targets, { kind: 'done' }, now)
+    await vi.waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1))
+    expect((await readGroups()).map(item => item.task.status)).toEqual(['done', 'done'])
+    reconcile.mockClear()
+    await done.undo()
+    await vi.waitFor(() => expect(reconcile).toHaveBeenCalledTimes(1))
+    expect(await readGroups()).toEqual(previous)
+    await expect(applyBulkTaskChange([targets[0], { id: crypto.randomUUID() }], { kind: 'skip' }, now)).rejects.toThrow('Task unavailable')
+    expect(await readGroups()).toEqual(previous)
+    const skipped = await applyBulkTaskChange(targets, { kind: 'skip' }, now)
+    expect((await readGroups()).every(item => item.task.status === 'skipped')).toBe(true)
+    await skipped.undo()
+    expect(await readGroups()).toEqual(previous)
+  } finally {
+    stop()
+  }
+})
+
+it('applies category to a series and can delete multiple occurrences or one series with exact undo', async () => {
+  await saveTask({ ...draft(), repeat: { ...defaultRepeat, mode: 'daily' } }, 0)
+  await saveCategory({ name: 'Daily', color: 'mint', icon: 'leaf' })
+  const category = await table('categories').filter(item => item.name === 'Daily').first()
+  const previous = await group()
+  const { id } = previous.task
+  const targets = [{ id, occurrence: today }, { id, occurrence: '2026-11-23' }]
+  const categorize = await applyBulkTaskChange(targets, { kind: 'category', categoryId: category!.id }, now)
+  expect(categorize.count).toBe(1)
+  expect((await group()).task.categoryId).toBe(category!.id)
+  await categorize.undo()
+  const occurrenceDelete = await applyBulkTaskChange(targets, { kind: 'delete', scope: 'occurrence' }, now)
+  expect((await group()).exceptions.map(item => item.action)).toEqual(['skipped', 'skipped'])
+  await occurrenceDelete.undo()
+  expect(await group()).toEqual(previous)
+  const seriesDelete = await applyBulkTaskChange(targets, { kind: 'delete', scope: 'series' }, now)
+  expect(await group()).toBeUndefined()
+  await seriesDelete.undo()
+  expect(await group()).toEqual(previous)
+})
+
+it('moves elapsed timed tasks to today as all-day and undoes their reminder changes', async () => {
+  vi.setSystemTime(new Date(2026, 10, 21, 8))
+  await saveTask({ ...draft(), startDate: '2026-11-21', allDay: false, startTime: '09:00', reminders: [0, 5] }, 0)
+  const previous = await group()
+  const moved = await applyBulkTaskChange([{ id: previous.task.id }], { kind: 'date', date: today }, now)
+  expect(moved.timeRemoved).toBe(1)
+  expect((await group()).task).toMatchObject({
+    allDay: true, startAt: today, reminders: [], status: 'postponed', originalDate: '2026-11-21', rescheduleCount: 1,
+  })
+  await moved.undo()
+  expect(await group()).toEqual(previous)
 })
 
 it('creates, edits, and undoes with new or reordered subtasks', async () => {

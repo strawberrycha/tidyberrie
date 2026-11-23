@@ -38,8 +38,14 @@ async function write<K extends keyof Records>(name: K, records: Records[K][]) {
       if (existing && existing.id !== record.id) await target.delete(existing.id)
     }
     if (name === 'categories') {
-      const existing = await target.get(record.id)
+      const category = record as Records['categories']
+      const categories = table('categories')
+      const existing = await categories.get(record.id)
       if (existing && existing.updatedAt > record.updatedAt) continue
+      const conflict = !category.archived && !category.deletedAt && await categories.filter(item =>
+        item.id !== category.id && !item.archived && !item.deletedAt && item.name.toLowerCase() === category.name.toLowerCase()).first()
+      await categories.put(conflict ? { ...category, archived: true } : category)
+      continue
     }
     const next = 'key' in record && record.key === 'preferences'
       ? { ...record, storagePersistent: null }

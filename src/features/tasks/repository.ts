@@ -8,8 +8,10 @@ const tasks = table('tasks')
 const subtasks = table('subtasks')
 const exceptions = table('taskExceptions')
 const settings = table('settings')
+const categories = table('categories')
 const tables = [tasks, subtasks, exceptions]
-export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', tables, operation)
+export const inTaskTransaction = <T>(operation: () => Promise<T>) => db.transaction('rw', [...tables, categories], operation)
+export const readCategory = (id: string) => categories.get(id)
 export const taskTitles = async (date: string) => (await tasks.filter(item => !item.deletedAt && item.startAt?.slice(0, 10) === date).toArray()).map(item => item.title)
 
 export async function readGroups(deleted = false): Promise<TaskGroup[]> {

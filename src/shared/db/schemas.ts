@@ -67,8 +67,13 @@ export const recordSchemas = {
   }),
 }
 
+const backupCategories = z.array(recordSchemas.categories).refine(items => {
+  const names = items.filter(item => !item.archived && !item.deletedAt).map(item => item.name.toLowerCase())
+  return new Set(names).size === names.length
+}, 'Active category names must be unique.')
+
 export const backupDataSchema = z.strictObject({
-  categories: z.array(recordSchemas.categories).default(() => defaultCategories('1970-01-01T00:00:00.000Z')),
+  categories: backupCategories.default(() => defaultCategories('1970-01-01T00:00:00.000Z')),
   tasks: z.array(recordSchemas.tasks), subtasks: z.array(recordSchemas.subtasks),
   taskExceptions: z.array(recordSchemas.taskExceptions), dayThemes: z.array(recordSchemas.dayThemes),
   accounts: z.array(recordSchemas.accounts), incomes: z.array(recordSchemas.incomes),

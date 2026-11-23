@@ -114,7 +114,7 @@ export function rescheduleTask(id: string, occurrence: string | undefined, date:
       value.status = 'postponed'
     }
     value.startDate = date
-    if (!value.allDay && value.startTime && +new Date(date + 'T' + value.startTime) <= +now) {
+    if (elapsedStart(value, date, now)) {
       value.allDay = true
       value.startTime = ''
       value.endTime = ''
@@ -163,6 +163,63 @@ export function duplicateTask(id: string, weekStart: number, now = new Date()) {
     })
     return { id: copyId, value: copy, undo }
   })
+}
+
+const bulkTarget = z.strictObject({ id: uuid, occurrence: occurrenceDate.optional() })
+const bulkChange = z.discriminatedUnion('kind', [
+  z.strictObject({ kind: z.literal('done') }),
+  z.strictObject({ kind: z.literal('skip') }),
+  z.strictObject({ kind: z.literal('category'), categoryId: uuid.nullable() }),
+  z.strictObject({ kind: z.literal('date'), date: occurrenceDate }),
+  z.strictObject({ kind: z.literal('delete'), scope: z.enum(['occurrence', 'series']) }),
+])
+
+export type TaskTarget = z.infer<typeof bulkTarget>
+export type BulkChange = z.infer<typeof bulkChange>
+export async function applyBulkTaskChange(input: TaskTarget[], request: BulkChange, now = new Date()) {
+  const selected = z.array(bulkTarget).min(1).parse(input)
+  const action = bulkChange.parse(request)
+  const bySeries = action.kind === 'category' || (action.kind === 'delete' && action.scope === 'series')
+  const targets = [...new Map(selected.map(target => [target.id + '/' + (bySeries ? '' : target.occurrence ?? ''), target])).values()]
+  return repository.inTaskTransaction(async () => {
+    if (action.kind === 'category' && action.categoryId) {
+      const category = await repository.readCategory(action.categoryId)
+      if (!category || category.archived || category.deletedAt) throw new Error('Choose an active category.')
+    }
+    const undos: (() => Promise<void>)[] = []
+    let timeRemoved = 0
+    for (const { id, occurrence } of targets) {
+      const group = activeGroup(await repository.readGroup(id))
+      if (group.task.repeatRule && !occurrence && !bySeries) throw new Error('Choose a repeating occurrence.')
+      switch (action.kind) {
+        case 'done': undos.push(await changeCompletion(id, occurrence, true)); break
+        case 'skip': undos.push(await changeTaskStatus(id, occurrence, 'skipped')); break
+        case 'delete': undos.push(await deleteTask(id, bySeries ? undefined : occurrence)); break
+        case 'category':
+          undos.push(await repository.changeGroup(id, (previous, stamp) => {
+            const current = activeGroup(previous)
+            return { ...current, task: { ...current.task, categoryId: action.categoryId, updatedAt: stamp.updatedAt } }
+          }))
+          break
+        case 'date': {
+          const value = taskValue(group, localDate(now), occurrence)
+          if (elapsedStart(value, action.date, now)) timeRemoved++
+          undos.push(await rescheduleTask(id, occurrence, action.date, now))
+          break
+        }
+      }
+    }
+    return {
+      count: targets.length, timeRemoved,
+      undo: () => repository.inTaskTransaction(async () => {
+        for (const undo of [...undos].reverse()) await undo()
+      }),
+    }
+  })
+}
+
+function elapsedStart(value: TaskInput, date: string, now: Date) {
+  return !value.allDay && !!value.startTime && +new Date(date + 'T' + value.startTime) <= +now
 }
 
 export function changeCompletion(id: string, occurrence: string | undefined, done: boolean, subtaskId?: string, reminderDate?: string) {
