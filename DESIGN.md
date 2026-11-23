@@ -50,6 +50,8 @@ Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast w
 Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and clock on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.
 
 - Categories use labeled icon and color chips, with archived names labeled on existing tasks. Category selection uses a sheet directly under the date controls. Category groups display completion counts and keep their collapsed state in the Tasks tab.
+- Long press or use the card menu to select. The selection AppBar announces the count and exposes Select all and Close. The bottom bar replaces tabs and scrolls horizontally when needed. Swipe reveals labeled Done or Reschedule actions. Reserve the Android edge gesture zone and leave vertical scrolling enabled.
+- Overdue cards offer Today and Tomorrow. Move all confirms the count and leaves the collapsed Optional group out.
 - Optional and time estimates use compact chips. A postponed card shows the original date with an icon and text.
 - AppBars use a 56dp base, 20/24 title type, 48dp controls, and a border on scroll. Tasks adds a single row of 40dp chips inside 48dp targets and a filter sheet with draft, Reset, and Show results.
 - Use Nunito outside the wordmark, 16/22 headings, 14–16 body, captions at 12 or above, 16dp card and screen padding, 12dp card gaps, and 16–24dp section gaps. Use the shared soft card surface, rounded corners, border, and shadow.

@@ -15,13 +15,16 @@ Set-Location android
 
 Use `npm run dev` for development. Install Playwright Chromium with `npx playwright install chromium` or set `TIDY_CHROME_PATH` to an installed Chrome. The Android debug output is `android/app/build/outputs/apk/debug/app-debug.apk`. Install it on the test phone with Android Studio or adb.
 
-## Task Organizer T1 phone check
+## Task Organizer T1 and T2 phone check
 
 1. Open More → Organize → Categories. Add a category, rename it, change the color and icon, reorder it, and archive it. Try Undo and Restore. Try reusing an active category’s name with different capitalization.
 2. Add a task with a category, Optional task, and an estimate. Confirm the next add form suggests the last category. Try None, filter by two categories, group by Category, and collapse a group.
 3. Skip a task and check the completion denominator. Move a task to a later date and check the postponed chip. Change its status and check the chip clears. Verify a repeating move affects one occurrence.
 4. Duplicate an overdue timed task. Check that the copy opens today as all-day, with unchecked subtasks and no actual time. Try Undo.
-5. At 200% text, check controls and sheets in both themes. Verify a dated task reminder after rescheduling or duplicating.
+5. Long-press a card and try Select all, the card checkboxes, Back, and Close. Try Done, Skip, Category, Date, and Delete in separate selections. Undo each change and check that the previous task data returns. Include a repeating task in Delete and try both scopes.
+6. Swipe right to complete and reopen. Swipe left to pick a date. Repeat while scrolling vertically, near both screen edges, and with reduced motion enabled. Check that the actions stay available in the menu.
+7. Open Overdue and try Today, Tomorrow, and Move all to today. Expand Optional and verify Move all leaves those tasks alone. Check that moving an elapsed timed task removes its time and that Undo restores it.
+8. At 200% text, check controls and sheets in both themes. Check reminder delivery after a bulk date change and after swiping to reschedule.
 
 ## Reminder test on Xiaomi HyperOS
 

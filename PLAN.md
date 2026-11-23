@@ -14,7 +14,7 @@ Tidyberrie is a personal Android APK. Data and assets stay on the phone. Work on
 ## Task Organizer scope
 
 - T1 complete. Categories, statuses, optional tasks, time estimates, and duplication.
-- T2 pending. Selection, bulk actions, swipe, and overdue shortcut buttons.
+- T2 complete. Selection, atomic bulk actions, swipe, and overdue shortcut buttons.
 - T3 next after T2. Name sorting, additional grouping, and Day timeline.
 - T4 reminder actions. T5 templates, routines, and quotas.
 
