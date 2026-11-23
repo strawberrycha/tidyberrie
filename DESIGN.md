@@ -47,8 +47,9 @@ Button, Card, Chip, Checkbox, Progress bar or ring, Bottom sheet, Modal, Toast w
 
 ## Navigation and Home
 
-Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and clock on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.
+Use five safe-area bottom tabs with filled icons and a pill for the active tab. Use the compact logo and reminders bell on Home and stack soft token-based cards on the 8-pt grid. Keep stickers in empty states and the avatar. The floating add button opens the single enabled action directly or offers a short sheet when multiple actions are enabled.
 
+- Home’s 48dp bell has a count badge up to 9+ and a warning icon. The Reminders AppBar has a Back arrow. Missed and Upcoming are tabs with explicit labels. Today’s Plan uses up to three compact shared rows with Next up first.
 - Today opens By schedule with named headers, weekday summaries, progress and a direct add control. By time uses one ordered list with schedule captions. Use the schedule editor to set day chips, dates, color, icon and a timed task timeline with manual ordering for tasks that share a start time.
 - Tasks and Home share rows with tabular time, labeled notification icons, a two-line title, subtask chip and trailing checkbox. At 200% the time moves above the title. Subtasks expand with a 200ms fade and height transition or instantly under reduced motion.
 - Long press or use the card menu to select. The selection AppBar announces the count and exposes Select all and Close. The bottom bar replaces tabs and scrolls horizontally when needed. Swipe reveals labeled Done or Reschedule actions. Reserve the Android edge gesture zone and leave vertical scrolling enabled.

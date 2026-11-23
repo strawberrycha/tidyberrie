@@ -15,22 +15,11 @@ Set-Location android
 
 Use `npm run dev` for development. Install Playwright Chromium with `npx playwright install chromium` or set `TIDY_CHROME_PATH` to an installed Chrome. The Android debug output is `android/app/build/outputs/apk/debug/app-debug.apk`. Install it on the test phone with Android Studio or adb.
 
-## Task Organizer T1 and T2 phone check
+## Schedules and reminders phone check
 
-1. Open More → Organize → Categories. Add a category, rename it, change the color and icon, reorder it, and archive it. Try Undo and Restore. Try reusing an active category’s name with different capitalization.
-2. Add a task with a category, Optional task, and an estimate. Confirm the next add form suggests the last category. Try None, filter by two categories, group by Category, and collapse a group.
-3. Skip a task and check the completion denominator. Move a task to a later date and check the postponed chip. Change its status and check the chip clears. Verify a repeating move affects one occurrence.
-4. Duplicate an overdue timed task. Check that the copy opens today as all-day, with unchecked subtasks and no actual time. Try Undo.
-5. Long-press a card and try Select all, the card checkboxes, Back, and Close. Try Done, Skip, Category, Date, and Delete in separate selections. Undo each change and check that the previous task data returns. Include a repeating task in Delete and try both scopes.
-6. Swipe right to complete and reopen. Swipe left to pick a date. Repeat while scrolling vertically, near both screen edges, and with reduced motion enabled. Check that the actions stay available in the menu.
-7. Open Overdue and try Today, Tomorrow, and Move all to today. Expand Optional and verify Move all leaves those tasks alone. Check that moving an elapsed timed task removes its time and that Undo restores it.
-8. At 200% text, check controls and sheets in both themes. Check reminder delivery after a bulk date change and after swiping to reschedule.
-
-## Reminder test on Xiaomi HyperOS
-
-1. Update the installed app using the debug APK, or use `adb install -r android/app/build/outputs/apk/debug/app-debug.apk`. Open More → Reminders and Alarms. Checking should resolve within three seconds. Follow the permission explanation if shown. If notifications were already allowed, expect no system prompt. Confirm Retry checks updates the rows after returning from Android settings.
-2. Tap **Send test reminder in 10 seconds**. Check the scheduled count and upcoming time. Run separate tests in the app, after leaving the app from Recents, and with the phone locked. Wait for each test before starting the next. Repeat in airplane mode.
-3. Create a task starting in three minutes with an **At scheduled time** reminder. Leave the app and wait for the alert. Schedule another far enough ahead to restart and unlock the phone before it is due. Restart without reopening Tidyberrie. Report whether it arrives. Note if you used Android Force stop, which can cancel reminders.
-4. If delivery fails, enable Autostart, set Battery saver to **No restrictions**, lock Tidyberrie in Recents, set **Task reminders** to Alert with sound, and turn off Do Not Disturb and silent mode. Use the shortcuts under **Not ringing?** and repeat the tests. If Android denies notifications, confirm Home links to the fix. On Android 12/12L also test exact alarm denial where the switch is available.
-5. Tap **Copy diagnostics** and send the pasted text with the expected time, actual delivery time or no delivery, and whether the app was open, closed, locked or restarted. The copy omits task titles.
-6. Check quick date chips and past-date errors in Add task. Edit the title on an overdue task without changing its date. Scroll Home, Tasks, and Reminders in both themes and confirm no content enters the status bar.
+1. Update the app in place with `adb install -r android/app/build/outputs/apk/debug/app-debug.apk` or Android Studio. Confirm existing independent tasks still appear.
+2. In Tasks, try the Monday example. Open More → Organize → Schedules, add timed tasks, change days and duplicate Monday to Tuesday. Pause and resume the copy. Delete it and check Trash and Undo.
+3. Compare Today By schedule and By time. Expand and collapse subtasks, check one off, and undo. Skip one occurrence and confirm another day remains available. Try long-press selection, swipe, and Overdue moves.
+4. Enable Notify on a schedule task due in a few minutes. Check its time and schedule in Home → Reminders → Upcoming. Leave the app and lock the phone. Verify delivery. Repeat with another occurrence, skip it before it is due, and check that it is removed from Upcoming and stays silent.
+5. Leave an alert unhandled and check the Home badge and Missed tab. Try Open, Snooze and Done. Confirm the Home clock is gone and that More → Reminders and Alarms links to the inbox. Disable notifications and check the warning icon and settings link.
+6. Check both themes at 200% text, TalkBack, and swipe near Android’s back-gesture edges. If delivery fails on Xiaomi, check Autostart, Battery saver, alert-channel sound and Do Not Disturb. Copy diagnostics and note the expected time and whether the app was open, closed or locked.

@@ -13,21 +13,15 @@ Tidyberrie is a personal Android APK. Data and assets stay on the phone. Work on
 
 ## Task Organizer scope
 
-- T1 complete. Categories, statuses, optional tasks, time estimates, and duplication.
-- T2 complete. Selection, atomic bulk actions, swipe, and overdue shortcut buttons.
-- T3 next after T2. Name sorting, additional grouping, and Day timeline.
-- T4 reminder actions. T5 templates, routines, and quotas.
-
-- Editable category entities with defaults for Sleep, Meals, Hygiene, Chores, Academics and Learning, Fitness, Pageant, Leisure, Faith, and Events/Others.
-- To do, In progress, Done, Skipped, and Postponed. Skipping an optional task does not count as a failure.
-- Estimated versus actual time, duplicate task, and one-tap Move to today or tomorrow from Overdue.
-- Selection and bulk actions, search, filter, sort, and group.
-- List and Day timeline views. Swipe right to mark Done, swipe left to reschedule, and long-press to select.
-- Share one reminder engine with snooze and mark-done actions. Treat a native alarm mode as a later stretch step.
+- Named weekday schedules, active date ranges, pause, duplication and a timed task list. Today supports By schedule and By time. Independent tasks remain available.
+- To do, In progress, Done, Skipped and Postponed. Optional overdue tasks stay out of badges and bulk overdue moves.
+- T2 continues on the shared row. Long-press selects, swipe right completes or reopens, swipe left reschedules, and Overdue offers Today and Tomorrow. Bulk actions have one Undo.
+- Home opens Missed and Upcoming reminders. Use More → Reminders and Alarms for device settings and diagnostics.
+- Next work includes alarm mode, T3 name sorting, more grouping and a Day timeline view, then templates and quotas.
 
 ## Home spec
 
-Five bottom tabs keep their own navigation and scroll state. More groups utilities and settings. Home leads with a live clock, greeting, and week strip, followed by a short actionable plan and a three-day preview. The quick-add button opens the task form directly while Budget is disabled. Show reminder health only when needed.
+Five bottom tabs keep their own navigation and scroll state. More groups utilities and settings. Home leads with the app name and reminders bell, followed by the greeting, week strip, up to three compact Plan rows and a three-day preview. The quick-add button opens the task form directly while Budget is disabled. Show reminder health only when needed.
 
 ## Backlog
 
