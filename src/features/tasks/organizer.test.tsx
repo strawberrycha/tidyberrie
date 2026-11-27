@@ -34,8 +34,8 @@ it('formats dates month first and normalizes supported typed times', () => {
   expect(formatDate('2026-11-27')).toBe('Nov 27, 2026')
   expect(parseTypedDate('02/29/2026')).toBeUndefined()
   expect(parseTypedDate('02/29/2028')).toBe('2028-02-29')
-  expect(['7', '7:30', '730', '7:30 am', '19:30'].map(value => parseTypedTime(value, 'AM')))
-    .toEqual(['07:00', '07:30', '07:30', '07:30', '19:30'])
+  expect(['7', '7:30', '730', '7:30 am', '19:30', '00:30'].map(value => parseTypedTime(value, 'AM')))
+    .toEqual(['07:00', '07:30', '07:30', '07:30', '19:30', '00:30'])
 })
 
 it('masks typed dates, reports errors, and reflects native picker changes', () => {

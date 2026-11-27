@@ -12,7 +12,7 @@ export function BudgetHistory() {
   return <div className="budget-history">
     {!rows.length && <p>No budget changes yet.</p>}
     {rows.map(entry => <details key={entry.id}>
-      <summary>{historyLabels[entry.entityType] ?? entry.entityType} · {entry.field} · {new Date(entry.changedAt).toLocaleString()}</summary>
+      <summary>{historyLabels[entry.entityType] ?? entry.entityType} · {entry.field} · {new Date(entry.changedAt).toLocaleString('en-US')}</summary>
       <p>Record {entry.entityId}</p>
       <p>Previous</p><pre>{JSON.stringify(entry.oldValue, null, 2)}</pre>
       <p>New</p><pre>{JSON.stringify(entry.newValue, null, 2)}</pre>

@@ -71,7 +71,7 @@ export function BackupSettings() {
     {tools.overview === null && <p role="alert">Could not load snapshots.</p>}
     {tools.overview && !snapshots.length && <p>No snapshots yet.</p>}
     {snapshots.map(snapshot => <details key={snapshot.id}>
-      <summary>{snapshot.label} · {new Date(snapshot.createdAt).toLocaleString()}</summary>
+      <summary>{snapshot.label} · {new Date(snapshot.createdAt).toLocaleString('en-US')}</summary>
       <Counts counts={snapshot.counts} />
       <button className="secondary" disabled={tools.busy} onClick={() => {
         setSnapshotId(snapshot.id)

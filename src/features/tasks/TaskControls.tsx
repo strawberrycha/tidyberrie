@@ -9,10 +9,10 @@ import type { SmartList } from './lists'
 import type { Records } from '../../shared/db/schemas'
 import { TaskDialog } from './TaskDialog'
 
-export const emptyFilters = { schedule: '', tag: '', priority: '', status: '', pinned: false }
+export const emptyFilters = { category: '', schedule: '', tag: '', priority: '', status: '', pinned: false }
 export type Filters = typeof emptyFilters
 const chips = ['Today', 'Upcoming', 'Overdue', 'All', 'Completed'] as const
-const filterLabels = { schedule: 'Schedule', tag: 'Tag', priority: 'Priority', status: 'Status', pinned: 'Pinned only' }
+const filterLabels = { category: 'Category', schedule: 'Schedule', tag: 'Tag', priority: 'Priority', status: 'Status', pinned: 'Pinned only' }
 
 export function useTaskSearch(query: string) {
   const [delayed, setDelayed] = useState(query)
@@ -23,10 +23,11 @@ export function useTaskSearch(query: string) {
   return query ? delayed : ''
 }
 
-export function TaskControls({ list, select, query, setQuery, filters, apply, overdue, schedules = [], grouped, setGrouped, selection }: {
+export function TaskControls({ list, select, query, setQuery, filters, apply, overdue, schedules = [], grouped, setGrouped, selection, categories = [], directory, openDirectory, categoryBack }:  {
   list: SmartList; select: (list: SmartList) => void; query: string; setQuery: (query: string) => void;
   filters: Filters; apply: (next: Filters) => void; overdue: number
   schedules?: Records['schedules'][]; grouped?: boolean; setGrouped?: (value: boolean) => void
+  categories?: Records['categories'][]; directory?: boolean; openDirectory?: () => void; categoryBack?: () => void;
   selection?: { count: number; clear: () => void; all: () => void }
 }) {
   const [searching, search] = useState(false)
@@ -73,16 +74,17 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, ov
           placeholder="Search tasks" onChange={event => setQuery(event.target.value)} onKeyDown={event => {
             if (event.key === 'Escape') { event.preventDefault(); closeSearch() }
           }} />
-      </AppBar> : <AppBar title="Tasks" actions={<>
+      </AppBar> : <AppBar title="Tasks" back={categoryBack} actions={<>
         <button ref={searchButton} type="button" className="icon-button" aria-label="Search" onClick={() => search(true)}><Search aria-hidden strokeWidth={iconStroke} /></button>
         <button type="button" className="icon-button task-filter-button" aria-label={active.length ? 'Filter, ' + active.length + ' active' : 'Filter'} onClick={() => setSheet('filter')}>
           <SlidersHorizontal aria-hidden strokeWidth={iconStroke} />{active.length > 0 && <span className="control-badge" aria-hidden>{active.length}</span>}
         </button>
-        {features.schedules && <button type="button" className="icon-button" aria-label="More task options" onClick={() => setSheet('sort')}><Ellipsis aria-hidden strokeWidth={iconStroke} /></button>}
+        {<button type="button" className="icon-button" aria-label="More task options" onClick={() => setSheet('sort')}><Ellipsis aria-hidden strokeWidth={iconStroke} /></button>}
       </>} />}
       <div className="task-chip-edge">
         <nav className="task-list-chips" aria-label="Task lists">
-          {chips.map(item => <button key={item} type="button" aria-pressed={item === list} onClick={() => select(item)}>
+          {!features.schedules && openDirectory && <button type="button" aria-pressed={!!directory} onClick={openDirectory}><span>Categories</span></button>}
+          {chips.map(item => <button key={item} type="button" aria-pressed={!directory && item === list} onClick={() => select(item)}>
             <span>{item === 'Completed' ? 'Done' : item}
               {item === 'Overdue' && overdue > 0 && <span className="chip-count">{overdue}</span>}
             </span>
@@ -93,28 +95,35 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, ov
     {active.length > 0 && <div className="active-filters" aria-label="Active filters">
       {active.map(key => {
         const label = key === 'pinned' ? filterLabels[key] : filterLabels[key] + ': ' +
-          (key === 'schedule' ? filters.schedule.split(',').map(id => schedules.find(item => item.id === id)?.name ?? 'Other tasks').join(', ') : key === 'status'
+          (key === 'category' ? filters.category.split(',').map(id => categories.find(item => item.id === id)?.name ?? 'Uncategorized').join(', ') : key === 'schedule' ? filters.schedule.split(',').map(id => schedules.find(item => item.id === id)?.name ?? 'Other tasks').join(', ') : key === 'status'
             ? statusLabels[filters.status as keyof typeof statusLabels] : key === 'priority' ? filters.priority[0].toUpperCase() + filters.priority.slice(1) : filters.tag)
         return <button type="button" className="secondary" aria-label={'Remove ' + label} key={key}
           onClick={() => apply({ ...filters, [key]: emptyFilters[key] })}>{label}<X aria-hidden size={inlineIconSize} strokeWidth={iconStroke} /></button>
       })}
     </div>}
-    {sheet === 'filter' && <FilterSheet schedules={schedules} initial={filters} close={close} apply={next => { apply(next); close() }} />}
-    {features.schedules && sheet === 'sort' && <TaskDialog title="Task options" close={close}>
+    {sheet === 'filter' && <FilterSheet categories={categories} schedules={schedules} initial={filters} close={close} apply={next => { apply(next); close() }} />}
+    {sheet === 'sort' && <TaskDialog title="Task options" close={close}>
       <label className="task-sheet-field">View<select value={grouped ? 'schedule' : 'time'}
         onChange={event => { setGrouped?.(event.target.value === 'schedule'); close() }}>
-        <option value="schedule">By schedule</option><option value="time">By time</option>
+        <option value="schedule">{features.schedules ? 'By schedule' : 'By category'}</option><option value="time">By time</option>
       </select></label>
-      <Link className="secondary" to="/more/schedules">Manage schedules</Link>
+      {features.schedules && <Link className="secondary" to="/more/schedules">Manage schedules</Link>}
     </TaskDialog>}
   </>
 }
 
-function FilterSheet({ initial, close, apply, schedules }: { schedules: Records['schedules'][]; initial: Filters; close: () => void; apply: (next: Filters) => void }) {
+function FilterSheet({ initial, close, apply, schedules, categories }: { categories: Records['categories'][]; schedules: Records['schedules'][]; initial: Filters; close: () => void; apply: (next: Filters) => void }) {
   const [draft, setDraft] = useState(initial)
   return <TaskDialog title="Filter tasks" close={close}>
     <div className="sheet-handle" aria-hidden />
     <form className="task-form task-filter-sheet" onSubmit={event => { event.preventDefault(); apply(draft) }}>
+      {!features.schedules && <fieldset><legend>Categories</legend>
+        {[{ id: 'none', name: 'Uncategorized' }, ...categories].map(item => {
+          const selected = draft.category ? draft.category.split(',') : []
+          return <label className="task-check" key={item.id}><input type="checkbox" checked={selected.includes(item.id)}
+            onChange={event => setDraft({ ...draft, category: (event.target.checked ? [...selected, item.id] : selected.filter(id => id !== item.id)).join(',') })} />{item.name}</label>
+        })}
+      </fieldset>}
       {features.schedules && <fieldset><legend>Schedules</legend>
         {[{ id: 'none', name: 'Other tasks' }, ...schedules].map(item => {
           const selected = draft.schedule ? draft.schedule.split(',') : []

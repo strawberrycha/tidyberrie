@@ -12,8 +12,8 @@ export function watchLastCategory(next: (id: string | null) => void) {
   return () => subscription.unsubscribe()
 }
 
-export function watchCategories(next: (categories: Category[]) => void, error: () => void) {
-  const subscription = liveQuery(() => categories.orderBy('order').filter(item => !item.deletedAt).toArray())
+export function watchCategories(next: (categories: Category[]) => void, error: () => void, deleted = false) {
+  const subscription = liveQuery(() => categories.orderBy('order').filter(item => !!item.deletedAt === deleted).toArray())
     .subscribe({ next, error })
   return () => subscription.unsubscribe()
 }

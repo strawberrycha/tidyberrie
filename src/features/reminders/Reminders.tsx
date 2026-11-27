@@ -40,7 +40,7 @@ export function Reminders() {
   const settings = (screen: Parameters<typeof openDeviceSettings>[0]) => {
     void openDeviceSettings(screen).catch(() => show({ message: 'Android settings are unavailable.' }))
   }
-  const formatTime = (time?: number) => time === undefined ? '—' : new Date(time).toLocaleString()
+  const formatTime = (time?: number) => time === undefined ? '—' : new Date(time).toLocaleString('en-US')
   async function copyDiagnostics() {
     const report = [
       'Tidyberrie reminder diagnostics', 'Notifications: ' + notificationAccess, 'Exact alarms: ' + exactAccess,

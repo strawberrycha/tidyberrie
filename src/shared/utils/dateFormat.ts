@@ -21,7 +21,7 @@ export function parseTypedDate(value: string) {
 
 export function parseTypedTime(value: string, period: 'AM' | 'PM') {
   const match = /^(\d{2}):(\d{2})$/.exec(value.trim())
-  if (match && Number(match[1]) > 12 && Number(match[1]) < 24 && Number(match[2]) < 60) return match[1] + ':' + match[2]
+  if (match && (Number(match[1]) === 0 || Number(match[1]) > 12) && Number(match[1]) < 24 && Number(match[2]) < 60) return match[1] + ':' + match[2]
   const parts = /^(\d{1,2})(?::?(\d{2}))?\s*(am|pm)?$/i.exec(value.trim())
   if (!parts) return
   const hour = Number(parts[1])

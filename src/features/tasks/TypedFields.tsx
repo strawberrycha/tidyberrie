@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { CalendarDays, Clock } from 'lucide-react'
 import { inlineIconSize } from '../../app/uiTokens'
 import { formatDate, parseTypedDate, parseTypedTime } from '../../shared/utils/dateFormat'
@@ -14,21 +14,22 @@ type Field = { label: string; value: string; change: (value: string) => void; mi
 export function DateField({ label, value, change, min, required }: Field) {
   const id = useId()
   const picker = useRef<HTMLInputElement>(null)
+  const typed = useRef<HTMLInputElement>(null)
   const [draft, setDraft] = useState<{ text: string; accepted: string }>()
   const text = draft?.accepted === value ? draft.text : formatDate(value, 'numeric')
   const date = parseTypedDate(text)
   const error = text && !date ? 'Enter a valid date as MM/DD/YYYY.' : date && min && date < min ? 'Pick today or a later date.' : ''
+  useEffect(() => { typed.current?.setCustomValidity(error) }, [error])
   return <div>
     <label htmlFor={id}>{label}</label>
     <div className="organizer-field">
-      <input id={id} type="text" inputMode="numeric" placeholder="MM/DD/YYYY" value={text} required={required}
+      <input ref={typed} id={id} type="text" inputMode="numeric" placeholder="MM/DD/YYYY" value={text} required={required}
         aria-invalid={!!error} aria-describedby={error ? id + '-error' : undefined}
         pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" onChange={event => {
           const digits = event.target.value.replace(/\D/g, '').slice(0, 8)
           const masked = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4)].filter(Boolean).join('/')
           const next = parseTypedDate(masked)
           const accepted = next && (!min || next >= min) ? next : ''
-          event.target.setCustomValidity(next && min && next < min ? 'Pick today or a later date.' : masked && !next ? 'Enter a valid date as MM/DD/YYYY.' : '')
           setDraft({ text: masked, accepted })
           change(accepted)
         }} />
@@ -47,22 +48,23 @@ const displayTime = (value: string) => value ? (Number(value.slice(0, 2)) % 12 |
 export function TimeField({ label, value, change, min, required }: Field) {
   const id = useId()
   const picker = useRef<HTMLInputElement>(null)
+  const typed = useRef<HTMLInputElement>(null)
   const [manualPeriod, setPeriod] = useState<'AM' | 'PM'>('AM')
   const [draft, setDraft] = useState<{ text: string; accepted: string }>()
   const period = value ? periodOf(value) : manualPeriod
   const text = draft?.accepted === value ? draft.text : displayTime(value)
   const parsed = parseTypedTime(text, period)
   const error = text && !parsed ? 'Enter a valid time.' : parsed && min && parsed < min ? 'That time has already passed.' : ''
+  useEffect(() => { typed.current?.setCustomValidity(error) }, [error])
   return <div>
     <label htmlFor={id}>{label}</label>
     <div className="organizer-field">
-      <input id={id} type="text" value={text} required={required} aria-invalid={!!error} aria-describedby={error ? id + '-error' : undefined}
+      <input ref={typed} id={id} type="text" value={text} required={required} aria-invalid={!!error} aria-describedby={error ? id + '-error' : undefined}
         onBlur={() => { if (parsed && !error) setDraft(undefined) }}
         onChange={event => {
           const text = event.target.value
           const next = parseTypedTime(text, period)
           const accepted = next && (!min || next >= min) ? next : ''
-          event.target.setCustomValidity(text && !accepted ? 'Enter a valid time that has not passed.' : '')
           setDraft({ text, accepted })
           change(accepted)
         }} />

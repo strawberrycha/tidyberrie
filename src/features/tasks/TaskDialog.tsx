@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 
-export function TaskDialog({ title, close, children, side = false }: {
-  title: string; close: () => void; children: ReactNode; side?: boolean
+export function TaskDialog({ title, close, children, side = false, full = false }: {
+  title: string; close: () => void; children: ReactNode; side?: boolean; full?: boolean
 }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -14,7 +14,7 @@ export function TaskDialog({ title, close, children, side = false }: {
     return () => dialog.close()
   }, [])
 
-  return <dialog ref={ref} className={side ? 'task-dialog calendar-side' : 'task-dialog'} aria-label={title} onCancel={event => {
+  return <dialog ref={ref} className={full ? 'task-dialog organizer-full-form' : side ? 'task-dialog calendar-side' : 'task-dialog'} aria-label={title} onCancel={event => {
     event.preventDefault()
     close()
   }} onKeyDown={event => {

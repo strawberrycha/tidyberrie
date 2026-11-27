@@ -15,8 +15,8 @@ const priorityIcons = { low: ArrowDown, medium: Minus, high: ArrowUp }
 
 const expandedRows = new Set<string>()
 
-export function TaskCard({ row, now, canComplete, disabled, edit, remove, check, schedule, menu, selection, select, swipe, move, timeFormat, next, addSubtask, compact }: {
-  schedule?: Records['schedules']; timeFormat?: '12h' | '24h'; next?: boolean; compact?: boolean; addSubtask?: (title: string) => void; row: TaskRow; now: Date; canComplete: boolean; disabled: boolean; edit?: () => void; remove?: () => void;
+export function TaskCard({ row, now, canComplete, disabled, edit, remove, check, schedule, menu, selection, select, swipe, move, timeFormat, next, addSubtask, compact, hold }: {
+  hold?: () => void; schedule?: Records['schedules']; timeFormat?: '12h' | '24h'; next?: boolean; compact?: boolean; addSubtask?: (title: string) => void; row: TaskRow; now: Date; canComplete: boolean; disabled: boolean; edit?: () => void; remove?: () => void;
   check: (done: boolean, subtaskId?: string) => void; menu?: () => void;
   selection?: boolean; select?: () => void; swipe?: (action: 'done' | 'reschedule') => void; move?: (days: number) => void
 }) {
@@ -31,10 +31,10 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
   const date = localDate(now)
   const time = [now.getHours(), now.getMinutes()].map(unit => String(unit).padStart(2, '0')).join(':')
   const Priority = priorityIcons[value.priority]
-  const { drag, consumeClick, ...gesture } = useTaskGesture({ disabled: disabled || selection !== undefined || expanded || !select, select, swipe })
+  const { drag, consumeClick, ...gesture } = useTaskGesture({ disabled: disabled || selection !== undefined || expanded || (!select && !hold), select: hold ?? select, swipe })
   const Reveal = drag > 0 ? done ? RotateCcw : Check : CalendarArrowDown
   return <div className="task-gesture" data-swipe-enabled={!!swipe && selection === undefined && !expanded} data-dragging={drag !== 0}
-    {...gesture} onClickCapture={event => {
+    {...gesture} onContextMenu={hold && selection === undefined ? event => { event.preventDefault(); hold() } : undefined} onClickCapture={event => {
       if (consumeClick()) { event.preventDefault(); event.stopPropagation() }
     }} onClick={event => {
       if (selection !== undefined && !(event.target as Element).closest('label, input')) select?.()
@@ -44,7 +44,7 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
       <Reveal size={inlineIconSize} /> {drag > 0 ? done ? 'To do' : 'Done' : 'Reschedule'}
     </div>}
     <article style={drag ? { transform: 'translateX(' + drag + 'px)' } : undefined}
-      role={selection === undefined ? undefined : 'row'} aria-selected={selection} className={'task-card task-row task-color-' + (schedule?.color || value.color || 'rose')} data-complete={done} data-skipped={value.status === 'skipped'} data-compact={compact || undefined}>
+      role={selection === undefined ? undefined : 'row'} aria-selected={selection} className={'task-card task-row task-color-' + (value.color || row.group.category?.color || schedule?.color || 'rose')} data-complete={done} data-skipped={value.status === 'skipped'} data-compact={compact || undefined}>
     <div role={selection === undefined ? undefined : 'gridcell'}>
     <div className="task-row-heading">
       <span className="task-row-time">{formatted}</span>
@@ -54,6 +54,7 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
       </span>
       <div className="task-row-title">
         <h2>{edit && selection === undefined ? <button type="button" className="task-row-open" onClick={edit}>{value.title}</button> : value.title}</h2>
+        {row.group.category && <p className="task-row-schedule"><span className="task-schedule-dot" aria-hidden /> {row.group.category.name}</p>}
         {schedule && <p className="task-row-schedule"><span className="task-schedule-dot" aria-hidden /> {schedule.name}</p>}
       </div>
       {selection === undefined && !!count.total && <button className="secondary task-row-progress" type="button" aria-label={'Subtasks ' + count.done + '/' + count.total}
@@ -98,7 +99,8 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
     {selection === undefined && move && <div className="task-actions">{['Today', 'Tomorrow'].map((name, index) =>
       <button className="secondary" key={name} type="button" disabled={disabled} onClick={() => move(index)}>
         <CalendarArrowDown size={inlineIconSize} aria-hidden /> {name}</button>)}</div>}
-    {selection === undefined && (remove || menu) && <div className="task-actions">
+    {selection === undefined && (remove || menu || hold) && <div className="task-actions">
+      {hold && <button className="organizer-access-action secondary" type="button" aria-label={'Actions for ' + value.title} disabled={disabled} onClick={hold}>Actions</button>}
       {menu && <button className="icon-button" type="button" aria-label={'Actions for ' + value.title} disabled={disabled} onClick={menu}><Ellipsis aria-hidden /></button>}
       {remove && <button className="secondary" type="button" disabled={disabled} onClick={remove}>Delete</button>}
     </div>}

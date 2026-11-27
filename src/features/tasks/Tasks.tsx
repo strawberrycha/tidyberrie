@@ -1,8 +1,14 @@
+import { AppBar } from '../../app/AppBar'
+import { CategoryDirectory } from './CategoryDirectory'
+import { ActionSheet, LongPressHint } from './ActionSheet'
+import { useHierarchy } from './useHierarchy'
+import { restoreCategory } from './hierarchyService'
+import { TaskIcon } from './icons'
 import { formatDate } from '../../shared/utils/dateFormat'
 import { DateField } from './TypedFields'
 import { features } from '../../app/features'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { CalendarArrowDown, ChevronDown, Check, Folder, ListTodo, Plus, SkipForward, Trash2 } from 'lucide-react'
+import { CalendarArrowDown, ChevronDown, Check, Copy, Folder, ListTodo, Plus, SkipForward, Trash2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTheme } from '../../shared/theme/ThemeProvider'
 import { EmptyIllustration } from '../../shared/ui/EmptyState'
@@ -38,7 +44,7 @@ const emptyMessages: Record<SmartList, string> = {
   All: 'No tasks yet',
 }
 type Editor = { id?: string; date?: string; initial: TaskInput }
-type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup } | { kind: 'actions'; row: TaskRow } | { kind: 'bulk-date' | 'bulk-schedule' | 'bulk-delete' | 'move-all'; targets: TaskTarget[] }
+type Dialog = { kind: 'edit'; editor: Editor } | { kind: 'edit-scope' | 'delete-scope'; row: TaskRow } | { kind: 'permanent'; group: TaskGroup } | { kind: 'actions'; row: TaskRow } | { kind: 'bulk-date' | 'bulk-category' | 'bulk-schedule' | 'bulk-delete' | 'move-all'; targets: TaskTarget[] }
 
 const rowKey = (row: TaskRow) => row.group.task.id + '/' + (row.occurrence ?? '')
 
@@ -54,13 +60,18 @@ function useClock() {
 }
 
 export function Tasks({ trash = false }: { trash?: boolean } = {}) {
-  const [params] = useSearchParams()
+  const [params, setParams] = useSearchParams()
   const requested = params.get('list')
-  const initial = requested === 'Overdue' || requested === 'Upcoming' ? requested : 'Today'
-  return <TaskView key={trash ? 'trash' : initial} trash={trash} initial={initial} />
+  const category = !features.schedules && !trash ? params.get('category') : null
+  const initial = category ? 'All' : requested === 'Overdue' || requested === 'Upcoming' ? requested : 'Today'
+  return <TaskView key={trash ? 'trash' : category ?? initial} trash={trash} initial={initial} selectedCategory={category}
+    startInDirectory={!requested && !category && !features.schedules && !trash}
+    chooseCategory={id => setParams(id ? { category: id } : {})} />
 }
 
-function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
+function TaskView({ trash, initial, selectedCategory, startInDirectory, chooseCategory }: {
+  trash: boolean; initial: SmartList; selectedCategory: string | null; startInDirectory: boolean; chooseCategory: (id: string | null) => void
+}) {
   const state = useTaskGroups(trash)
   const { preferences } = useTheme()
   const actions = useTaskActions()
@@ -69,6 +80,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const viewedDate = selectedDate || today
   const [list, setList] = useState<SmartList>(initial)
+  const [directory, setDirectory] = useState(startInDirectory)
   const [query, setQuery] = useState('')
   const [filters, setFilters] = useState(emptyFilters)
   const [grouped, setGrouped] = useState(() => localStorage.getItem('tidyberrie-task-view') !== 'time')
@@ -84,6 +96,10 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const { groups } = state ?? {}
   const { rows: schedules } = useSchedules()
   const { rows: deletedSchedules } = useSchedules(true)
+  const { categories, groups: categoryGroups } = useHierarchy(trash)
+  const category = selectedCategory && categories.find(item => item.id === selectedCategory)
+  const categoryName = category ? category.name : selectedCategory === 'none' ? 'Uncategorized' : 'Category'
+  const categoryUnavailable = !!selectedCategory && selectedCategory !== 'none' && !category
   const toast = useToast()
   const close = () => setDialog(undefined)
   const weekStart = preferences?.weekStart ?? 0
@@ -91,24 +107,25 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const delayedQuery = useTaskSearch(query)
   const overdueCount = useMemo(() => !trash && groups ? countOverdue(groups, now) : 0, [groups, now, trash])
   const updateQuery = useCallback((input: string) => { setQuery(input); setPage(0) }, [])
-  const add = () => setDialog({ kind: 'edit', editor: { initial: emptyTask(today) } })
+  const add = () => setDialog({ kind: 'edit', editor: { initial: { ...emptyTask(today), categoryId: category ? category.id : null } } })
   const candidates = useMemo(() => !trash && list === 'Today' && groups
     ? summarizeTasks(groups, { from: viewedDate, through: viewedDate }, true).get(viewedDate)?.rows ?? []
     : smartRows(trash ? [] : groups ?? [], list, now, overduePage), [groups, list, now, overduePage, viewedDate, trash])
   const rows = useMemo(() => {
     const search = delayedQuery.trim().toLocaleLowerCase()
     const tag = filters.tag.trim().toLocaleLowerCase()
-    return candidates.filter(({ value }) => value.title.toLocaleLowerCase().includes(search)
+    return candidates.filter(({ value }) => (!selectedCategory || (categories.some(item => !item.archived && item.id === value.categoryId) ? value.categoryId : 'none') === selectedCategory)
+      && (!filters.category || filters.category.split(',').includes(categories.some(item => !item.archived && item.id === value.categoryId) ? value.categoryId! : 'none')) && value.title.toLocaleLowerCase().includes(search)
       && (!filters.schedule || filters.schedule.split(',').includes(value.scheduleId ?? 'none')) && (!tag || value.tag.toLocaleLowerCase().includes(tag))
       && (!filters.pinned || value.pinned) && (!filters.priority || value.priority === filters.priority) && (!filters.status || value.status === filters.status))
       .sort((a, b) => {
         const dateOrder = a.value.startDate.localeCompare(b.value.startDate)
-        return (list === 'Today' ? 0 : list === 'Completed' ? -dateOrder : dateOrder) ||
+        return (selectedCategory || !features.schedules || list === 'Today' ? 0 : list === 'Completed' ? -dateOrder : dateOrder) ||
           (a.value.startTime || '24:00').localeCompare(b.value.startTime || '24:00') ||
           (a.value.scheduleId && a.value.scheduleId === b.value.scheduleId ? compareScheduleTasks(a.group.task, b.group.task) :
-            a.group.task.createdAt.localeCompare(b.group.task.createdAt))
+            (a.group.task.scheduleOrder ?? Number.MAX_SAFE_INTEGER) - (b.group.task.scheduleOrder ?? Number.MAX_SAFE_INTEGER) || a.group.task.createdAt.localeCompare(b.group.task.createdAt))
       })
-  }, [candidates, filters, list, delayedQuery])
+  }, [candidates, filters, list, delayedQuery, selectedCategory, categories])
   const selectedKeys = useMemo(() => new Set(selected), [selected])
   const selectedRows = selected ? rows.filter(row => selectedKeys.has(rowKey(row))) : []
   const visibleRows = list === 'Overdue' ? rows.filter(row => !row.value.optional || showOptional) : rows
@@ -126,7 +143,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
     }
   }, [clearSelection, selecting])
 
-  const trashed = useMemo(() => trash ? [...groups ?? []].filter(group => !group.schedule?.deletedAt).sort((a, b) => b.task.deletedAt!.localeCompare(a.task.deletedAt!)) : [], [groups, trash])
+  const trashed = useMemo(() => trash ? [...groups ?? []].filter(group => !group.schedule?.deletedAt && !group.category?.deletedAt).sort((a, b) => b.task.deletedAt!.localeCompare(a.task.deletedAt!)) : [], [groups, trash])
   const size = trash ? trashed.length : Math.max(visibleRows.length, optionalRows.length ? 1 : 0)
   const lastPage = Math.max(0, Math.ceil(size / PAGE_SIZE) - 1)
   const currentPage = Math.min(page, lastPage)
@@ -161,17 +178,26 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
 
   function save(editor: Editor, value: TaskInput) {
     void actions.save(value, weekStart, editor.id, editor.date, () => {
-      if (!editor.id) { setList('All'); setPage(0); setQuery(''); setFilters(emptyFilters) }
+      if (!editor.id && !directory) { setList('All'); setPage(0); setQuery(''); setFilters(emptyFilters) }
       close()
     })
   }
 
   return <div ref={view} className="tasks-view" data-task-selection={selecting || undefined}>
-    {!trash && <TaskControls list={list} select={item => { setList(item); if (item === 'Today') setSelectedDate(null); setPage(0); setOverduePage(0) }}
+    {!trash && selectedCategory && !selecting && <AppBar title={categoryName} back={() => chooseCategory(null)}>
+      <h1><TaskIcon name={category ? category.icon : 'check'} size={inlineIconSize} /> {categoryName}</h1>
+    </AppBar>}
+    {!trash && (!selectedCategory || selecting) && <TaskControls list={list} select={item => { setDirectory(false); setList(item); if (item === 'Today') setSelectedDate(null); setPage(0); setOverduePage(0) }}
       query={query} setQuery={updateQuery} filters={filters} apply={next => { setFilters(next); setPage(0) }}
-      overdue={overdueCount} schedules={schedules} grouped={grouped} setGrouped={value => { setGrouped(value); localStorage.setItem('tidyberrie-task-view', value ? 'schedule' : 'time'); setPage(0) }}
+      overdue={overdueCount} schedules={schedules} categories={categories.filter(item => !item.archived)} directory={directory}
+      openDirectory={() => { setDirectory(true); setQuery(''); setFilters(emptyFilters) }} grouped={grouped} setGrouped={value => { setGrouped(value); localStorage.setItem('tidyberrie-task-view', value ? 'schedule' : 'time'); setPage(0) }}
       selection={selecting ? { count: selectedRows.length, clear: clearSelection, all: () => setSelected(visibleRows.map(rowKey)) } : undefined} />}
+    {directory ? <CategoryDirectory categories={categories} categoryFilter={filters.category}
+      groups={categoryGroups} tasks={groups ?? []} today={today}
+      query={delayedQuery} openCategory={chooseCategory} addTask={add} /> : <>
+    {!trash && !features.schedules && <LongPressHint available={!!groups?.length} />}
     <div className="tasks-toolbar">
+      {!!selectedCategory && !selecting && !categoryUnavailable && <button type="button" className="secondary" onClick={add}>Add task</button>}
       {!trash && !selecting && list === 'Today' && <DateField label="View date" value={selectedDate ?? today} change={date => { setSelectedDate(date); setPage(0) }} />}
       {trash && <Link className="secondary" to="/tasks">Back to tasks</Link>}
       {import.meta.env.DEV && showDevelopmentTools(true) && !trash && !selecting && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
@@ -186,6 +212,11 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         {!!overduePage && <button type="button" className="secondary" onClick={() => { setOverduePage(overduePage - 1); setPage(0) }}>Newer repeats</button>}
       </div>}
     </>}
+    {!features.schedules && trash && categories.map(item => <section className="task-card" key={item.id}>
+      <h2>{item.name}</h2><button className="secondary" onClick={() => void restoreCategory(item.id).then(undo =>
+        toast({ message: 'Category restored.', action: { label: 'Undo', run: undo } }),
+        () => toast({ message: 'Could not restore the category.' }))}>Restore category</button>
+    </section>)}
     {features.schedules && trash && deletedSchedules.map(schedule => <section className="task-card" key={schedule.id}>
       <h2>{schedule.name}</h2>
       <button className="secondary" onClick={() => void restoreSchedule(schedule.id).then(undo =>
@@ -202,13 +233,13 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
           () => toast({ message: 'Could not create the example schedule.' }))}>Try an example schedule</button>
         </> : <><h2>{trash ? features.schedules && deletedSchedules.length ? 'Deleted schedules' : 'Trash is empty' : query || Object.values(filters).some(Boolean) ? 'No matching tasks' : emptyMessages[list]}</h2>
         {trash ? <p>Deleted tasks stay here for 30 days.</p> : !query && !Object.values(filters).some(Boolean) &&
-          (list === 'Today' || list === 'Upcoming' || list === 'All') && <button type="button" className="primary" onClick={add}>Add a task</button>}</>}
+          !categoryUnavailable && (list === 'Today' || list === 'Upcoming' || list === 'All') && <button type="button" className="primary" onClick={add}>Add a task</button>}</>}
       </section>
       : <>
         <div className="task-grid" role={selecting ? 'grid' : undefined} aria-label={selecting ? 'Select tasks' : undefined} aria-multiselectable={selecting || undefined}>
           {trash ? trashed.slice(start, start + PAGE_SIZE).map(group => <article className="task-card" key={group.task.id}>
             <h3>{group.task.title}</h3>
-            <p>Deleted {group.task.deletedAt?.slice(0, 10)}</p>
+            <p>Deleted {formatDate(group.task.deletedAt ?? '')}</p>
             <ul>{group.subtasks.filter(item => item.deletedAt === group.task.deletedAt).sort((a, b) => a.order - b.order)
               .map(item => <li key={item.id}>{item.title}</li>)}</ul>
             <div className="task-actions">
@@ -223,24 +254,39 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             return <TaskCard key={row.group.task.id + (row.occurrence ?? '')} row={displayed} schedule={schedules.find(item => item.id === row.value.scheduleId) ?? row.group.schedule} timeFormat={preferences?.timeFormat} next={list === 'Today' && viewedDate === today && rows.find(item => item.value.status !== 'done' && item.value.status !== 'skipped') === row} now={now} disabled={actions.busy} canComplete={!repeating || !!date}
               addSubtask={title => void actions.save({ ...displayed.value, subtasks: [...displayed.value.subtasks, { ...newSubtask(), title }] }, weekStart, row.group.task.id, date, () => {})}
               check={(done, id) => void actions.check(row.group.task.id, date, done, id)}
-              menu={() => setDialog({ kind: 'actions', row })}
+              menu={features.schedules ? () => setDialog({ kind: 'actions', row }) : undefined}
+              hold={!features.schedules ? () => setDialog({ kind: 'actions', row }) : undefined}
               selection={selecting ? selectedKeys.has(rowKey(row)) : undefined} select={() => toggle(row)}
               swipe={!repeating || date ? action => action === 'done'
                 ? void actions.check(row.group.task.id, date, displayed.value.status !== 'done')
                 : openDate([row]) : undefined}
               move={list === 'Overdue' ? days => applyBulk(targetsFor([row]), { kind: 'date', date: addDays(today, days) }) : undefined}
               edit={() => repeating ? setDialog({ kind: 'edit-scope', row }) : edit(row)}
-              remove={() => repeating ? setDialog({ kind: 'delete-scope', row }) : remove(row)} />
+              remove={features.schedules ? () => repeating ? setDialog({ kind: 'delete-scope', row }) : remove(row) : undefined} />
             }
             function renderDates(pageRows: TaskRow[]) {
               return [...new Set(pageRows.map(row => row.value.startDate))].map(date => <section className="task-grid" key={date}>
                 <h2><time dateTime={date}>{formatDate(date)}</time></h2>{pageRows.filter(row => row.value.startDate === date).map(renderRow)}
               </section>)
             }
+            const byCategory = !features.schedules && grouped && !selectedCategory && !selecting
+            function renderCategories(source: TaskRow[]) {
+              const categoryKeys = [...categories.filter(item => !item.archived).map(item => item.id), 'none']
+              return categoryKeys.map(key => {
+                const items = source.filter(row => (categories.some(item => item.id === row.value.categoryId && !item.archived) ? row.value.categoryId : 'none') === key)
+                if (!items.length) return null
+                const counted = items.filter(item => item.value.status !== 'skipped')
+                const shown = !collapsed.includes(key)
+                return <section key={key} className="task-grid"><button className="secondary" aria-expanded={shown}
+                  onClick={() => setCollapsed(previous => shown ? [...previous, key] : previous.filter(id => id !== key))}>
+                  {categories.find(item => item.id === key)?.name ?? 'Uncategorized'} · {counted.filter(item => item.value.status === 'done').length} of {counted.length} done
+                </button>{shown && items.map(renderRow)}</section>
+              })
+            }
             if (list === 'Overdue') {
               const current = [...mandatoryOverdue, ...(showOptional ? optionalRows : [])].slice(start, start + PAGE_SIZE)
               return <>
-                {selecting ? current.filter(row => !row.value.optional).map(renderRow) : renderDates(current.filter(row => !row.value.optional))}
+                {byCategory ? renderCategories(current.filter(row => !row.value.optional)) : features.schedules && !selecting ? renderDates(current.filter(row => !row.value.optional)) : current.filter(row => !row.value.optional).map(renderRow)}
                 {!!optionalRows.length && <div role={selecting ? 'row' : undefined}>
                   <div role={selecting ? 'gridcell' : undefined}>
                     <button type="button" className="secondary" aria-expanded={showOptional} onClick={() => setShowOptional(!showOptional)}>
@@ -248,10 +294,12 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
                     </button>
                   </div>
                 </div>}
-                {selecting ? current.filter(row => row.value.optional).map(renderRow) : renderDates(current.filter(row => row.value.optional))}
+                {byCategory ? renderCategories(current.filter(row => row.value.optional)) : features.schedules && !selecting ? renderDates(current.filter(row => row.value.optional)) : current.filter(row => row.value.optional).map(renderRow)}
               </>
             }
+            if (byCategory) return renderCategories(visibleRows)
             if (selecting || (list === 'Today' && (!grouped || !features.schedules))) return visibleRows.slice(start, start + PAGE_SIZE).map(renderRow)
+            if (!features.schedules) return visibleRows.slice(start, start + PAGE_SIZE).map(renderRow)
             if (list !== 'Today') return renderDates(visibleRows.slice(start, start + PAGE_SIZE))
             return scheduleGroups.map(group => {
               const groupRows = visibleRows.filter(row => (row.value.scheduleId ?? '') === group.key)
@@ -270,13 +318,14 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             })
           })()}
         </div>
-        {(!features.schedules || !grouped || list !== 'Today' || selecting) && visibleRows.length > 0 && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
-        {(!features.schedules || !grouped || list !== 'Today' || selecting) && lastPage > 0 && <div className="task-actions">
+        {(selectedCategory || !grouped || selecting || list === 'Overdue' || (features.schedules && list !== 'Today')) && visibleRows.length > 0 && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
+        {(selectedCategory || !grouped || selecting || list === 'Overdue' || (features.schedules && list !== 'Today')) && lastPage > 0 && <div className="task-actions">
           <button type="button" className="secondary" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
           <button type="button" className="secondary" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next page</button>
         </div>}
       </>}
-    {!trash && !selecting && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
+    {!trash && !selecting && !categoryUnavailable && <button type="button" className="primary task-fab" aria-label="Add task" onClick={add}><Plus size={26} aria-hidden /></button>}
+    </>}
     {dialog?.kind === 'edit' && <TaskForm key={dialog.editor.id ?? 'new'} initial={dialog.editor.initial} title={dialog.editor.id ? 'Edit task' : 'Add task'} occurrence={!!dialog.editor.date} editing={!!dialog.editor.id}
       busy={actions.busy} close={close} save={value => save(dialog.editor, value)}
       duplicate={dialog.editor.id ? () => void actions.duplicate(dialog.editor.id!, weekStart, (id, value) =>
@@ -288,7 +337,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
       const choose = (date?: string) => editing ? edit(row, date) : remove(row, date)
       return <TaskDialog title={row.group.task.scheduleId ? editing ? 'Edit scheduled task' : 'Delete scheduled task' : editing ? 'Edit repeating task' : 'Delete repeating task'} close={close}>
         <div className="task-form">
-          <p>{row.value.title}{date ? ' · ' + date : ''}</p>
+          <p>{row.value.title}{date ? ' · ' + formatDate(date) : ''}</p>
           {date && <button type="button" className="secondary" disabled={actions.busy} onClick={() => choose(date)}>{row.group.task.scheduleId ? 'This day only' : 'This occurrence only'}</button>}
           <button type="button" className={row.group.task.scheduleId && editing ? 'primary' : 'secondary'} disabled={actions.busy} onClick={() => choose()}>{row.group.task.scheduleId ? editing ? 'All days of this schedule' : 'Whole task' : 'All occurrences'}</button>
           <button type="button" className="secondary" onClick={close}>Cancel</button>
@@ -299,6 +348,14 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
       const { row } = dialog
       const id = row.group.task.id
       const date = actionDate(row, now)
+      if (!features.schedules) return <ActionSheet title={row.value.title} close={close} actions={[
+        { label: 'Select', icon: Check, run: () => { toggle(row); close() } },
+        { label: 'Duplicate', icon: Copy, run: () => void actions.duplicate(id, weekStart, (copyId, value) =>
+          setDialog({ kind: 'edit', editor: { id: copyId, initial: value } })) },
+        { label: 'Move to category', icon: Folder, run: () => setDialog({ kind: 'bulk-category', targets: targetsFor([row]) }) },
+        { label: 'Delete', icon: Trash2, disabled: !!row.group.task.repeatRule && !date, run: () => remove(row, date) },
+        ...(row.group.task.repeatRule ? [{ label: 'Delete all', icon: Trash2, run: () => remove(row) }] : []),
+      ]} />
       const canChange = (!row.group.task.repeatRule && !row.group.task.scheduleId) || !!date
       return <TaskDialog title={row.value.title} close={close}><div className="task-form">
         <button className="secondary" disabled={!canChange} onClick={() => { void actions.check(id, date, row.value.status !== 'done'); close() }}>
@@ -318,13 +375,19 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
       {([
         ['Done', Check, () => applyBulk(selectedTargets, { kind: 'done' }), unavailable],
         ['Skip', SkipForward, () => applyBulk(selectedTargets, { kind: 'skip' }), unavailable],
+        ['Category', Folder, () => setDialog({ kind: 'bulk-category', targets: selectedTargets }), false],
         ['Schedule', Folder, () => setDialog({ kind: 'bulk-schedule', targets: selectedTargets }), false],
         ['Date', CalendarArrowDown, () => openDate(selectedRows), unavailable],
         ['Delete', Trash2, openDelete, false],
-      ] as const).filter(([label]) => features.schedules || label !== 'Schedule').map(([label, Icon, run, disabled]) => <button className="secondary" key={label} disabled={actions.busy || !selectedRows.length || disabled} onClick={run}>
+      ] as const).filter(([label]) => features.schedules ? label !== 'Category' : label !== 'Schedule').map(([label, Icon, run, disabled]) => <button className="secondary" key={label} disabled={actions.busy || !selectedRows.length || disabled} onClick={run}>
         <Icon aria-hidden size={inlineIconSize} /> {label}</button>)}
       {unavailable && <p>Choose a dated occurrence to change its status or date.</p>}
     </div>}
+    {dialog?.kind === 'bulk-category' && <ActionSheet title="Move to category" close={close} actions={[
+      { label: 'Uncategorized', icon: Folder, run: () => applyBulk(dialog.targets, { kind: 'category', categoryId: null }) },
+      ...categories.filter(item => !item.archived).map(item => ({ label: item.name, icon: Folder,
+        run: () => applyBulk(dialog.targets, { kind: 'category', categoryId: item.id }) })),
+    ]} />}
     {dialog?.kind === 'bulk-schedule' && <SchedulePicker rows={schedules} current={null} close={close}
       choose={scheduleId => applyBulk(dialog.targets, { kind: 'schedule', scheduleId })} />}
     {dialog?.kind === 'bulk-date' && <TaskDialog title={dialog.targets.length === 1 ? 'Reschedule task' : 'Reschedule tasks'} close={close}>
