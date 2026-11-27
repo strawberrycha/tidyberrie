@@ -1,3 +1,4 @@
+import { convertScheduleRecords } from './categoryMigration'
 import type Dexie from 'dexie'
 import { defaultCategories, normalizeTaskFields } from '../../features/tasks/categoryData'
 
@@ -43,7 +44,6 @@ export function registerMigrations(db: Dexie) {
     })
     if (!await tx.table('categories').count()) await tx.table('categories').bulkAdd(defaultCategories())
   })
-  db.on('populate', tx => tx.table('categories').bulkAdd(defaultCategories()))
   db.version(10).stores({
     schedules: 'id,order,deletedAt',
     tasks: 'id,startAt,endAt,status,deletedAt,categoryId,scheduleId',
@@ -54,4 +54,6 @@ export function registerMigrations(db: Dexie) {
       task.alertAlarm = false
     })
   })
+  db.version(11).stores({ groups: 'id,order,deletedAt', categories: 'id,order,deletedAt,groupId' })
+    .upgrade(convertScheduleRecords)
 }

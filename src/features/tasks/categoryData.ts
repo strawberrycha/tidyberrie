@@ -37,6 +37,6 @@ const presets = [
 export function defaultCategories(stamp = new Date().toISOString()) {
   return presets.map(([name, color, icon], order) => ({
     id: 'fd7ef237-0a28-46fb-8b80-' + (order + 1).toString().padStart(12, '0'),
-    name, color, icon, order, archived: false, createdAt: stamp, updatedAt: stamp, deletedAt: null,
+    name, color, icon, order, groupId: null, archived: false, createdAt: stamp, updatedAt: stamp, deletedAt: null,
   }))
 }

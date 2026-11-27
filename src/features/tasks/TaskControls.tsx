@@ -1,3 +1,4 @@
+import { features } from '../../app/features'
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 import { Ellipsis, Search, SlidersHorizontal, X } from 'lucide-react'
@@ -77,7 +78,7 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, ov
         <button type="button" className="icon-button task-filter-button" aria-label={active.length ? 'Filter, ' + active.length + ' active' : 'Filter'} onClick={() => setSheet('filter')}>
           <SlidersHorizontal aria-hidden strokeWidth={iconStroke} />{active.length > 0 && <span className="control-badge" aria-hidden>{active.length}</span>}
         </button>
-        <button type="button" className="icon-button" aria-label="More task options" onClick={() => setSheet('sort')}><Ellipsis aria-hidden strokeWidth={iconStroke} /></button>
+        {features.schedules && <button type="button" className="icon-button" aria-label="More task options" onClick={() => setSheet('sort')}><Ellipsis aria-hidden strokeWidth={iconStroke} /></button>}
       </>} />}
       <div className="task-chip-edge">
         <nav className="task-list-chips" aria-label="Task lists">
@@ -99,7 +100,7 @@ export function TaskControls({ list, select, query, setQuery, filters, apply, ov
       })}
     </div>}
     {sheet === 'filter' && <FilterSheet schedules={schedules} initial={filters} close={close} apply={next => { apply(next); close() }} />}
-    {sheet === 'sort' && <TaskDialog title="Task options" close={close}>
+    {features.schedules && sheet === 'sort' && <TaskDialog title="Task options" close={close}>
       <label className="task-sheet-field">View<select value={grouped ? 'schedule' : 'time'}
         onChange={event => { setGrouped?.(event.target.value === 'schedule'); close() }}>
         <option value="schedule">By schedule</option><option value="time">By time</option>
@@ -114,14 +115,14 @@ function FilterSheet({ initial, close, apply, schedules }: { schedules: Records[
   return <TaskDialog title="Filter tasks" close={close}>
     <div className="sheet-handle" aria-hidden />
     <form className="task-form task-filter-sheet" onSubmit={event => { event.preventDefault(); apply(draft) }}>
-      <fieldset><legend>Schedules</legend>
+      {features.schedules && <fieldset><legend>Schedules</legend>
         {[{ id: 'none', name: 'Other tasks' }, ...schedules].map(item => {
           const selected = draft.schedule ? draft.schedule.split(',') : []
           return <label className="task-check" key={item.id}><input type="checkbox" checked={selected.includes(item.id)}
             onChange={event => setDraft({ ...draft, schedule: (event.target.checked ? [...selected, item.id] :
               selected.filter(id => id !== item.id)).join(',') })} />{item.name}</label>
         })}
-      </fieldset>
+      </fieldset>}
       <label>Tag<input value={draft.tag} onChange={event => setDraft({ ...draft, tag: event.target.value })} /></label>
       <label>Priority<select value={draft.priority} onChange={event => setDraft({ ...draft, priority: event.target.value })}><option value="">Any priority</option>{priorities.map(priority => <option key={priority} value={priority}>{priority[0].toUpperCase() + priority.slice(1)}</option>)}</select></label>
       <label>Status<select value={draft.status} onChange={event => setDraft({ ...draft, status: event.target.value })}><option value="">Any status</option>{statuses.map(status => <option key={status} value={status}>{statusLabels[status]}</option>)}</select></label>

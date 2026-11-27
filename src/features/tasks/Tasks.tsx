@@ -1,3 +1,4 @@
+import { features } from '../../app/features'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarArrowDown, ChevronDown, Check, Folder, ListTodo, Plus, SkipForward, Trash2 } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -184,7 +185,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         {!!overduePage && <button type="button" className="secondary" onClick={() => { setOverduePage(overduePage - 1); setPage(0) }}>Newer repeats</button>}
       </div>}
     </>}
-    {trash && deletedSchedules.map(schedule => <section className="task-card" key={schedule.id}>
+    {features.schedules && trash && deletedSchedules.map(schedule => <section className="task-card" key={schedule.id}>
       <h2>{schedule.name}</h2>
       <button className="secondary" onClick={() => void restoreSchedule(schedule.id).then(undo =>
         toast({ message: 'Schedule and tasks restored.', action: { label: 'Undo', run: undo } }),
@@ -192,13 +193,13 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
     </section>)}
     {state?.error ? <p role="alert">Tasks could not be loaded.</p> : !groups ? <div className="task-loading" role="status" aria-label="Loading tasks" /> : size === 0
       ? <section className="empty-card task-empty"><EmptyIllustration sticker="check" icon={ListTodo} />
-        {!trash && groups.length === 0 && schedules.length === 0 && list === 'Today' && !selectedDate ? <>
+        {features.schedules && !trash && groups.length === 0 && schedules.length === 0 && list === 'Today' && !selectedDate ? <>
           <h2>Plan your day with a schedule</h2>
           <Link className="primary" to="/more/schedules?new=1">Create a schedule</Link>
           <button className="secondary" onClick={() => void createExampleSchedule().then(undo =>
             toast({ message: 'Example schedule created.', action: { label: 'Undo', run: undo } }),
           () => toast({ message: 'Could not create the example schedule.' }))}>Try an example schedule</button>
-        </> : <><h2>{trash ? deletedSchedules.length ? 'Deleted schedules' : 'Trash is empty' : query || Object.values(filters).some(Boolean) ? 'No matching tasks' : emptyMessages[list]}</h2>
+        </> : <><h2>{trash ? features.schedules && deletedSchedules.length ? 'Deleted schedules' : 'Trash is empty' : query || Object.values(filters).some(Boolean) ? 'No matching tasks' : emptyMessages[list]}</h2>
         {trash ? <p>Deleted tasks stay here for 30 days.</p> : !query && !Object.values(filters).some(Boolean) &&
           (list === 'Today' || list === 'Upcoming' || list === 'All') && <button type="button" className="primary" onClick={add}>Add a task</button>}</>}
       </section>
@@ -249,7 +250,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
                 {selecting ? current.filter(row => row.value.optional).map(renderRow) : renderDates(current.filter(row => row.value.optional))}
               </>
             }
-            if (selecting || (list === 'Today' && !grouped)) return visibleRows.slice(start, start + PAGE_SIZE).map(renderRow)
+            if (selecting || (list === 'Today' && (!grouped || !features.schedules))) return visibleRows.slice(start, start + PAGE_SIZE).map(renderRow)
             if (list !== 'Today') return renderDates(visibleRows.slice(start, start + PAGE_SIZE))
             return scheduleGroups.map(group => {
               const groupRows = visibleRows.filter(row => (row.value.scheduleId ?? '') === group.key)
@@ -268,8 +269,8 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             })
           })()}
         </div>
-        {(!grouped || list !== 'Today' || selecting) && visibleRows.length > 0 && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
-        {(!grouped || list !== 'Today' || selecting) && lastPage > 0 && <div className="task-actions">
+        {(!features.schedules || !grouped || list !== 'Today' || selecting) && visibleRows.length > 0 && <p role="status" className="task-result-count">{start + 1}–{Math.min(start + PAGE_SIZE, size)} of {size}</p>}
+        {(!features.schedules || !grouped || list !== 'Today' || selecting) && lastPage > 0 && <div className="task-actions">
           <button type="button" className="secondary" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous page</button>
           <button type="button" className="secondary" disabled={currentPage === lastPage} onClick={() => setPage(currentPage + 1)}>Next page</button>
         </div>}
@@ -305,7 +306,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'in_progress'); close() }}>In progress</button>
         <button className="secondary" disabled={!canChange} onClick={() => { void actions.status(id, date, 'skipped'); close() }}>Skip</button>
         <button className="secondary" disabled={!canChange} onClick={() => openDate([row])}>Reschedule</button>
-        <button className="secondary" onClick={() => setDialog({ kind: 'bulk-schedule', targets: targetsFor([row]) })}>Move to another schedule</button>
+        {features.schedules && <button className="secondary" onClick={() => setDialog({ kind: 'bulk-schedule', targets: targetsFor([row]) })}>Move to another schedule</button>}
         <button className="secondary" onClick={() => { toggle(row); close() }}>Select</button>
         <button className="secondary" onClick={() => (row.group.task.repeatRule || row.group.task.scheduleId) ? setDialog({ kind: 'delete-scope', row }) : remove(row)}>Delete</button>
         <button className="secondary" onClick={() => void actions.duplicate(id, weekStart, (copyId, value) =>
@@ -319,7 +320,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
         ['Schedule', Folder, () => setDialog({ kind: 'bulk-schedule', targets: selectedTargets }), false],
         ['Date', CalendarArrowDown, () => openDate(selectedRows), unavailable],
         ['Delete', Trash2, openDelete, false],
-      ] as const).map(([label, Icon, run, disabled]) => <button className="secondary" key={label} disabled={actions.busy || !selectedRows.length || disabled} onClick={run}>
+      ] as const).filter(([label]) => features.schedules || label !== 'Schedule').map(([label, Icon, run, disabled]) => <button className="secondary" key={label} disabled={actions.busy || !selectedRows.length || disabled} onClick={run}>
         <Icon aria-hidden size={inlineIconSize} /> {label}</button>)}
       {unavailable && <p>Choose a dated occurrence to change its status or date.</p>}
     </div>}

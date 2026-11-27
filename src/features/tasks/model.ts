@@ -6,7 +6,7 @@ import { decodeRepeat, encodeRepeat } from './recurrence'
 export type Task = Records['tasks']
 export type Subtask = Records['subtasks']
 export type TaskException = Records['taskExceptions']
-export type TaskGroup = { schedule?: Records['schedules']; task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
+export type TaskGroup = { category?: Records['categories']; categoryGroup?: Records['groups']; schedule?: Records['schedules']; task: Task; subtasks: Subtask[]; exceptions: TaskException[] }
 export type TaskRow = { group: TaskGroup; occurrence?: string; value: TaskInput }
 
 export function compareScheduleTasks(a: Task, b: Task) {

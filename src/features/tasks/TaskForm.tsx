@@ -8,6 +8,7 @@ import { IconPicker } from './IconPicker'
 import { addDays, localDate, repeatModes, weekdays } from './recurrence'
 import type { Repeat } from './recurrence'
 import { TaskDialog } from './TaskDialog'
+import { features } from '../../app/features'
 import { SchedulePicker } from './SchedulePicker'
 import { dayLabel, useSchedules } from './useSchedules'
 import { alarmMode } from './scheduleInput'
@@ -86,7 +87,7 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
         event.target.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus())
     }}>
       <label><span className="task-field-label">Title</span><input data-first-field {...field('title')} value={value.title} maxLength={120} required onChange={event => set('title', event.target.value)} />{error('title')}</label>
-      {!occurrence && <button type="button" className="secondary" onClick={() => setPicking(true)}>Schedule · {schedule?.name ?? 'None'}</button>}
+      {features.schedules && !occurrence && <button type="button" className="secondary" onClick={() => setPicking(true)}>Schedule · {schedule?.name ?? 'None'}</button>}
       {value.scheduleId && <p>Repeats on {schedule ? dayLabel(schedule.days) : 'scheduled days'}</p>}
       {!value.scheduleId && <div className="task-date-chips" aria-label="Quick dates" role="group">
         {dateChips.map(([label, date]) => <button className="secondary" key={date} type="button"

@@ -17,11 +17,14 @@ export const readCategory = (id: string) => categories.get(id)
 export const taskTitles = async (date: string) => (await tasks.filter(item => !item.deletedAt && item.startAt?.slice(0, 10) === date).toArray()).map(item => item.title)
 
 export async function readGroups(deleted = false): Promise<TaskGroup[]> {
-  return db.transaction('r', [...tables, schedules], async () => {
+  const categoryGroups = table('groups')
+  return db.transaction('r', [...tables, schedules, categories, categoryGroups], async () => {
     const items = deleted
       ? await tasks.where('deletedAt').above('').toArray()
       : await tasks.filter(item => item.deletedAt === null).toArray()
     const linked = new Map((await schedules.toArray()).map(schedule => [schedule.id, schedule]))
+    const categoryById = new Map((await categories.toArray()).map(category => [category.id, category]))
+    const groupById = new Map((await categoryGroups.toArray()).map(group => [group.id, group]))
     const ids = items.map(item => item.id)
     const children = await subtasks.where('taskId').anyOf(ids).toArray()
     const changes = await exceptions.where('taskId').anyOf(ids).toArray()
@@ -36,7 +39,12 @@ export async function readGroups(deleted = false): Promise<TaskGroup[]> {
     }
     const childGroups = byParent(children)
     const changeGroups = byParent(changes)
-    return items.map(task => ({ task, schedule: task.scheduleId ? linked.get(task.scheduleId) : undefined, subtasks: childGroups.get(task.id) ?? [], exceptions: changeGroups.get(task.id) ?? [] }))
+    return items.map(task => {
+      const category = task.categoryId ? categoryById.get(task.categoryId) : undefined
+      return { task, category, categoryGroup: category?.groupId ? groupById.get(category.groupId) : undefined,
+        schedule: task.scheduleId ? linked.get(task.scheduleId) : undefined,
+        subtasks: childGroups.get(task.id) ?? [], exceptions: changeGroups.get(task.id) ?? [] }
+    })
   })
 }
 

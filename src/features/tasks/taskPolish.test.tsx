@@ -14,6 +14,7 @@ import { Tasks } from './Tasks'
 import { ScheduleDays, Schedules } from './Schedules'
 
 const platform = vi.hoisted(() => ({ native: false, bulk: vi.fn(), groups: [] as TaskGroup[], schedules: [] as Schedule[] }))
+vi.mock('../../app/features', async load => ({ features: { ...(await load<typeof import('../../app/features')>()).features, schedules: true } }))
 vi.mock('@capacitor/core', () => ({ Capacitor: { isNativePlatform: () => platform.native } }))
 vi.mock('../../shared/theme/ThemeProvider', () => ({ useTheme: () => ({ preferences: { weekStart: 0 } }) }))
 vi.mock('./useTasks', () => ({ useTaskGroups: () => ({ groups: platform.groups }), useTaskActions: () => ({ busy: false, bulk: platform.bulk }) }))

@@ -12,9 +12,9 @@ export function saveCategory(input: unknown, id?: string) {
   const value = draft.parse(input)
   if (id !== undefined) uuid.parse(id)
   return repository.changeCategory(id, (current, all) => {
-    if (!current?.archived && all.some(item => item.id !== id && !item.deletedAt && !item.archived
+    if (all.some(item => item.id !== id && !item.deletedAt
       && normalizeName(item.name) === normalizeName(value.name))) throw new Error('A category already uses that name.')
-    return { ...value, archived: current?.archived ?? false, order: current?.order ?? Math.max(-1, ...all.map(item => item.order)) + 1 }
+    return { ...value, groupId: current?.groupId ?? null, archived: current?.archived ?? false, order: current?.order ?? Math.max(-1, ...all.map(item => item.order)) + 1 }
   })
 }
 
@@ -23,7 +23,7 @@ export function archiveCategory(id: string, archived: boolean) {
     if (!current) throw new Error('Category is unavailable.')
     if (!z.boolean().parse(archived) && all.some(item => item.id !== id && !item.deletedAt && !item.archived
       && normalizeName(item.name) === normalizeName(current.name))) throw new Error('A category already uses that name.')
-    return { name: current.name, color: current.color, icon: current.icon, order: current.order, archived }
+    return { name: current.name, color: current.color, icon: current.icon, order: current.order, groupId: current.groupId, archived }
   })
 }
 
