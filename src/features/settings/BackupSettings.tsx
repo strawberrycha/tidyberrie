@@ -28,7 +28,7 @@ export function BackupSettings() {
 
   return <section id="backups" className="settings-card wide">
     <h2><Upload size={20} aria-hidden="true" /> Backups</h2>
-    <p>{tools.overview?.exportedAt ? 'Last backup export: ' + new Date(tools.overview.exportedAt).toLocaleDateString() : 'No backup export recorded on this device.'}</p>
+    <p>{tools.overview?.exportedAt ? 'Last backup export: ' + new Date(tools.overview.exportedAt).toLocaleDateString('en-US') : 'No backup export recorded on this device.'}</p>
     <p>Keep a restorable JSON copy somewhere safe. CSV is for reading your data in a spreadsheet. A forgotten encrypted backup passphrase cannot be recovered.</p>
     <label>Passphrase for encrypted import or export
       <input ref={passphrase} type="password" autoComplete="off" maxLength={1024} aria-describedby="backup-passphrase-help" />

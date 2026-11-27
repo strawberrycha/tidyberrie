@@ -1,9 +1,12 @@
-import { BookOpen, Briefcase, Check, Heart, House, Leaf, Sparkles, Star, Plane, Wallet, Brush, Moon, Target, NotebookPen, PartyPopper, ListChecks, Cross, Focus } from 'lucide-react'
+import { CalendarDays, Dumbbell, Utensils, BookOpen, Briefcase, Check, Heart, House, Leaf, Sparkles, Star, Plane, Wallet, Brush, Moon, Target, NotebookPen, PartyPopper, ListChecks, Cross, Focus } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { TaskInput } from './input'
 import { Sticker } from '../../shared/ui/Sticker'
 
 const registry: Record<TaskInput['icon'], { label: string; Icon: LucideIcon }> = {
+  calendar: { label: 'Calendar', Icon: CalendarDays },
+  exercise: { label: 'Exercise', Icon: Dumbbell },
+  meals: { label: 'Meal', Icon: Utensils },
   check: { label: 'Check', Icon: Check },
   book: { label: 'Book', Icon: BookOpen },
   briefcase: { label: 'Work', Icon: Briefcase },

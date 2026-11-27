@@ -2,8 +2,10 @@ import { useId, useRef, useState } from 'react'
 import { inlineIconSize } from '../../app/uiTokens'
 import { useMinuteClock } from '../../app/useMinuteClock'
 import { ArrowDown, ArrowUp, Check, Circle, FastForward, Play, Plus, SkipForward, Trash2 } from 'lucide-react'
-import { colorLabels, colors, newSubtask, offsets, priorities, statusLabels, statuses, taskScheduleInput } from './input'
+import { newSubtask, offsets, priorities, statusLabels, statuses, taskScheduleInput } from './input'
 import type { SubtaskInput, TaskInput } from './input'
+import { ColorSelect } from './ColorSelect'
+import { useSuggestedIcon } from './suggestIcon'
 import { IconPicker } from './IconPicker'
 import { addDays, localDate, repeatModes, weekdays } from './recurrence'
 import type { Repeat } from './recurrence'
@@ -22,6 +24,7 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
   initial: TaskInput; title: string; occurrence?: boolean; editing?: boolean; busy: boolean; close: () => void; save: (value: TaskInput) => void; duplicate?: () => void
 }) {
   const [value, setValue] = useState(initial)
+  const [icon, pickIcon] = useSuggestedIcon(value.title, editing ? initial.icon : undefined)
   const today = localDate(useMinuteClock())
   const minimum = editing && initial.startDate < today && value.startDate === initial.startDate ? initial.startDate : today
   const dateChips = [['Today', today], ['Tomorrow', addDays(today, 1)], ['Next week', addDays(today, 7)]]
@@ -78,7 +81,7 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
   return <><TaskDialog title={title} close={cancel}>
     <form className="task-form" noValidate onSubmit={event => {
       event.preventDefault()
-      const result = taskScheduleInput(editing ? initial : undefined, new Date(), occurrence).safeParse(value)
+      const result = taskScheduleInput(editing ? initial : undefined, new Date(), occurrence).safeParse({ ...value, icon })
       if (result.success) { setErrors({}); save(result.data); return }
       const messages = Object.fromEntries(result.error.issues.map(issue => [issue.path.join('.'), issue.message]))
       setErrors(messages)
@@ -120,7 +123,7 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
       <div className="task-options" id={prefix + 'options'} hidden={!more}>
         <label>Description<textarea {...field('description')} value={value.description} maxLength={2000} rows={3} onChange={event => set('description', event.target.value)} />{error('description')}</label>
         <div className="task-fields">
-          <label>Color<select value={value.color} onChange={event => set('color', event.target.value as TaskInput['color'])}><option value="">Default</option>{colors.map((color, index) => <option key={color} value={color}>{colorLabels[index]}</option>)}</select></label>
+          <ColorSelect value={value.color || 'rose'} change={color => set('color', color)} />
           <label>Tag<input {...field('tag')} value={value.tag} maxLength={30} onChange={event => set('tag', event.target.value)} />{error('tag')}</label>
           <label>Priority<select value={value.priority} onChange={event => set('priority', event.target.value as TaskInput['priority'])}>{priorities.map(priority => <option key={priority}>{priority}</option>)}</select></label>
           <fieldset><legend>Status</legend>
@@ -136,7 +139,7 @@ export function TaskForm({ initial, title, occurrence, editing = false, busy, cl
         <label className="task-check"><input type="checkbox" role="switch" checked={value.optional}
           onChange={event => set('optional', event.target.checked)} /> Optional task</label>
         <p>Skipping it won't count as missed.</p>
-        <IconPicker value={value.icon} change={icon => set('icon', icon)} />
+        <IconPicker value={icon} change={next => { pickIcon(next); set('icon', next) }} />
         {!occurrence && !value.scheduleId && <fieldset>
           <legend>Recurrence</legend>
           <label>Repeat<select value={value.repeat.mode} onChange={event => {

@@ -26,7 +26,7 @@ it('prefers sticker artwork at illustration size and falls back to Lucide for mi
   expect(container.querySelector('img')).toBeNull()
 })
 
-it('supports roving focus, selection, searching, and no matches', () => {
+it('supports roving focus, selection, arrows and disabled ends', () => {
   function Harness() {
     const [icon, setIcon] = useState<IconKey>('check')
     return <IconPicker value={icon} change={setIcon} />
@@ -41,13 +41,11 @@ it('supports roving focus, selection, searching, and no matches', () => {
   expect(book).toHaveFocus()
   expect(book).toHaveAttribute('aria-checked', 'true')
   fireEvent.keyDown(book, { key: 'End' })
-  expect(within(group).getByRole('radio', { name: 'Budget day' })).toHaveFocus()
-  const search = screen.getByRole('searchbox', { name: 'Search icons' })
-  fireEvent.change(search, { target: { value: 'study' } })
-  const study = within(group).getByRole('radio', { name: 'Study' })
-  expect(study).toHaveAttribute('tabindex', '0')
-  fireEvent.click(study)
-  expect(study).toHaveAttribute('aria-checked', 'true')
-  fireEvent.change(search, { target: { value: 'not an icon' } })
-  expect(screen.getByRole('status')).toHaveTextContent('No matching icons.')
+  expect(within(group).getByRole('radio', { name: 'Meal' })).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Next icons' })).toBeDisabled()
+  fireEvent.keyDown(within(group).getByRole('radio', { name: 'Meal' }), { key: 'Home' })
+  expect(screen.getByRole('button', { name: 'Previous icons' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Next icons' }))
+  expect(screen.getByRole('button', { name: 'Previous icons' })).toBeEnabled()
+  expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
 })

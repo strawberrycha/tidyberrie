@@ -28,7 +28,7 @@ export function ReminderInbox() {
   const problem = reminderProblem(reminders.status, reminders.platform, reminders.error)
   const group = opened && groups?.groups?.find(item => item.task.id === opened.id)
   const occurrence = group?.task.repeatRule || group?.task.scheduleId ? opened?.date : undefined
-  const format = (at: number) => new Date(at).toLocaleString(undefined, {
+  const format = (at: number) => new Date(at).toLocaleString('en-US', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: preferences?.timeFormat !== '24h',
   })
 

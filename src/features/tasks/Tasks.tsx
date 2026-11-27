@@ -1,3 +1,5 @@
+import { formatDate } from '../../shared/utils/dateFormat'
+import { DateField } from './TypedFields'
 import { features } from '../../app/features'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { CalendarArrowDown, ChevronDown, Check, Folder, ListTodo, Plus, SkipForward, Trash2 } from 'lucide-react'
@@ -64,7 +66,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   const actions = useTaskActions()
   const now = useClock()
   const today = localDate(now)
-  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const viewedDate = selectedDate || today
   const [list, setList] = useState<SmartList>(initial)
   const [query, setQuery] = useState('')
@@ -165,13 +167,12 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
   }
 
   return <div ref={view} className="tasks-view" data-task-selection={selecting || undefined}>
-    {!trash && <TaskControls list={list} select={item => { setList(item); if (item === 'Today') setSelectedDate(''); setPage(0); setOverduePage(0) }}
+    {!trash && <TaskControls list={list} select={item => { setList(item); if (item === 'Today') setSelectedDate(null); setPage(0); setOverduePage(0) }}
       query={query} setQuery={updateQuery} filters={filters} apply={next => { setFilters(next); setPage(0) }}
       overdue={overdueCount} schedules={schedules} grouped={grouped} setGrouped={value => { setGrouped(value); localStorage.setItem('tidyberrie-task-view', value ? 'schedule' : 'time'); setPage(0) }}
       selection={selecting ? { count: selectedRows.length, clear: clearSelection, all: () => setSelected(visibleRows.map(rowKey)) } : undefined} />}
     <div className="tasks-toolbar">
-      {!trash && !selecting && list === 'Today' && <label>View date<input type="date" value={viewedDate}
-        onChange={event => { setSelectedDate(event.target.value); setPage(0) }} /></label>}
+      {!trash && !selecting && list === 'Today' && <DateField label="View date" value={selectedDate ?? today} change={date => { setSelectedDate(date); setPage(0) }} />}
       {trash && <Link className="secondary" to="/tasks">Back to tasks</Link>}
       {import.meta.env.DEV && showDevelopmentTools(true) && !trash && !selecting && <button className="secondary" type="button" disabled={actions.busy} onClick={() => {
         void actions.seed(weekStart, () => { setList('All'); setPage(0) })
@@ -233,7 +234,7 @@ function TaskView({ trash, initial }: { trash: boolean; initial: SmartList }) {
             }
             function renderDates(pageRows: TaskRow[]) {
               return [...new Set(pageRows.map(row => row.value.startDate))].map(date => <section className="task-grid" key={date}>
-                <h2><time dateTime={date}>{date}</time></h2>{pageRows.filter(row => row.value.startDate === date).map(renderRow)}
+                <h2><time dateTime={date}>{formatDate(date)}</time></h2>{pageRows.filter(row => row.value.startDate === date).map(renderRow)}
               </section>)
             }
             if (list === 'Overdue') {

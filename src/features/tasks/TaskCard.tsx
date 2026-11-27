@@ -1,4 +1,5 @@
 import { AlarmClock, Bell, ChevronDown, ArrowDown, ArrowUp, Check, CalendarArrowDown, CircleAlert, Ellipsis, Minus, Pin, Repeat2, RotateCcw } from 'lucide-react'
+import { monthFirstDate } from '../../shared/utils/dateFormat'
 import { useTaskGesture } from './useTaskGesture'
 import { barIconSize, inlineIconSize } from '../../app/uiTokens'
 import { useId, useState } from 'react'
@@ -76,7 +77,7 @@ export function TaskCard({ row, now, canComplete, disabled, edit, remove, check,
       {value.pinned && <span className="task-chip"><Pin size={16} aria-hidden /> Pinned</span>}
       {(!row.group.task.repeatRule || row.occurrence) && !value.optional && overdue(value, date, time) && <span className="task-chip"><CircleAlert size={16} aria-hidden /> Overdue</span>}
       {value.status !== 'todo' && !done && <span className="task-chip">{statusLabels[value.status]}</span>}
-      {value.status === 'postponed' && value.originalDate && <span className="task-chip"><RotateCcw size={inlineIconSize} aria-hidden /> Postponed from {new Date(value.originalDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>}
+      {value.status === 'postponed' && value.originalDate && <span className="task-chip"><RotateCcw size={inlineIconSize} aria-hidden /> Postponed from {monthFirstDate(value.originalDate, { weekday: 'short', month: 'short', day: 'numeric' })}</span>}
       {done && <span className="task-chip"><Check size={16} aria-hidden /> Completed</span>}
       {value.tag && <span className="task-chip">{value.tag}</span>}
     </div>

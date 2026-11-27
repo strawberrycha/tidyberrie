@@ -1,3 +1,4 @@
+import { monthFirstDate } from '../../shared/utils/dateFormat'
 import { addDays, localDate } from '../tasks/recurrence'
 
 export const calendarViews = ['Month', 'Week', 'Day', 'Agenda'] as const
@@ -10,7 +11,7 @@ export const weekdayOf = (key: string) => date(key).getUTCDay()
 export function dateLabel(key: string, options: Intl.DateTimeFormatOptions = {
   weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
 }) {
-  return date(key).toLocaleDateString(undefined, { ...options, timeZone: 'UTC' })
+  return monthFirstDate(key, options)
 }
 
 export function weekFirst(key: string, weekStart: number) {

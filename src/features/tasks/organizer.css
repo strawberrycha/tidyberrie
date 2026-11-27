@@ -1,0 +1,7 @@
+.organizer-swatch { display: inline-block; flex: none; inline-size: var(--space-6); block-size: var(--space-6); border-radius: var(--pill); background: var(--task-accent); border: var(--hairline) solid var(--control-border); }
+.organizer-icons { min-inline-size: 0; }
+.organizer-carousel { display: grid; grid-template-columns: var(--touch) minmax(0, 1fr) var(--touch); align-items: center; }
+.organizer-icon-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; }
+.organizer-icon-track > button { flex: 0 0 25%; scroll-snap-align: start; min-block-size: var(--touch); min-inline-size: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text); font-size: var(--caption); overflow-wrap: anywhere; }
+.organizer-icon-track > [aria-checked="true"], .organizer-field ~ .task-actions > [aria-pressed="true"] { outline: var(--outline) solid var(--primary); outline-offset: calc(-1 * var(--outline)); }
+.organizer-field { display: grid; grid-template-columns: minmax(0, 1fr) var(--touch); align-items: center; }

@@ -1,7 +1,7 @@
 export const iconKeys = [
   'check', 'book', 'briefcase', 'heart', 'home', 'leaf', 'star', 'sparkles',
   'study', 'work', 'deep-work', 'rest', 'self-care', 'health', 'errands',
-  'travel', 'celebration', 'journal', 'goals', 'cleaning', 'budget-day',
+  'travel', 'celebration', 'journal', 'goals', 'cleaning', 'budget-day', 'calendar', 'exercise', 'meals',
 ] as const
 
 export const avatarKeys = [
