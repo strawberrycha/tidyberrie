@@ -26,18 +26,17 @@ afterAll(() => {
   }
 })
 
-it('offers local quick dates across a year boundary and rejects typed past dates', () => {
+it('opens full screen with a required time and rejects typed past dates', () => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 11, 31, 12))
   render(<TaskForm initial={emptyTask('2026-12-31')} title="Add task" busy={false} save={vi.fn()} close={vi.fn()} />)
-  const field = screen.getByLabelText('Date')
-  expect(field).toHaveAttribute('min', '2026-12-31')
-  expect(screen.getByRole('button', { name: 'Today' })).toHaveAttribute('aria-pressed', 'true')
-  fireEvent.click(screen.getByRole('button', { name: 'Tomorrow' }))
-  expect(field).toHaveValue('2027-01-01')
-  fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
-  expect(field).toHaveValue('2027-01-07')
-  fireEvent.change(field, { target: { value: '2026-12-30' } })
+  const field = screen.getByRole('textbox', { name: 'Date' })
+  expect(screen.getByRole('dialog')).toHaveClass('organizer-full-form')
+  expect(field).toHaveValue('12/31/2026')
+  expect(screen.getByRole('checkbox', { name: 'All day' })).not.toBeChecked()
+  expect(screen.getByRole('textbox', { name: 'Time' })).toBeRequired()
+  expect(screen.queryByText('More options')).not.toBeInTheDocument()
+  fireEvent.change(field, { target: { value: '12302026' } })
   expect(screen.getByText('Pick today or a later date.')).toBeVisible()
 })
 
@@ -52,6 +51,8 @@ it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Es
   expect(await screen.findByText('Enter a title.')).toBeVisible()
   expect(save).not.toHaveBeenCalled()
   fireEvent.change(title, { target: { value: 'Read' } })
+  fireEvent.click(screen.getByRole('checkbox', { name: 'All day' }))
+  expect(screen.getByRole('checkbox', { name: 'Notify' })).toBeDisabled()
   expect(screen.queryByLabelText('Complete automatically when all subtasks are checked')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Add subtask' }))
   expect(screen.getByLabelText('Complete automatically when all subtasks are checked')).toBeVisible()
@@ -76,6 +77,19 @@ it('focuses Title, validates, adds subtasks via Enter, traps Tab and supports Es
   expect(close).toHaveBeenCalled()
   expect(confirmDiscard).toHaveBeenCalledWith('Discard unsaved changes?')
   confirmDiscard.mockRestore()
+})
+
+it('preserves hidden values and existing repeat metadata when editing', () => {
+  const save = vi.fn()
+  const task = { ...emptyTask('2099-11-22'), title: 'Read', allDay: false, startTime: '07:30',
+    priority: 'high' as const, optional: true, pinned: true, tag: 'old', reminders: [15 as const],
+    repeat: { ...emptyTask('2099-11-22').repeat, mode: 'monthly' as const, until: '2099-12-30' } }
+  render(<TaskForm initial={task} editing title="Edit task" busy={false} save={save} close={vi.fn()} />)
+  expect(screen.queryByText('Priority')).not.toBeInTheDocument()
+  expect(screen.getByRole('combobox', { name: 'Repeat every' })).toHaveValue('existing')
+  fireEvent.change(screen.getByRole('textbox', { name: 'Description' }), { target: { value: 'One chapter' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save task' }))
+  expect(save).toHaveBeenCalledWith({ ...task, description: 'One chapter' })
 })
 
 it('shows scheduled time, accessible notification and task state without retired time fields', () => {

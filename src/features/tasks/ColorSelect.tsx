@@ -9,13 +9,13 @@ type Color = typeof colors[number]
 export function ColorSwatch({ color }: { color: Color }) {
   return <span className={'organizer-swatch task-color-' + color} aria-hidden />
 }
-export function ColorSelect({ value, change }: { value: Color; change: (value: Color) => void }) {
+export function ColorSelect({ value, change, inherit, inherited }: { value: Color; change: (value: Color) => void; inherit?: () => void; inherited?: boolean }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   const label = colorLabels[colors.indexOf(value)]
   return <div>
     <button type="button" className="secondary" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(true)}>
-      <ColorSwatch color={value} /> Color · {label}
+      {!inherited && <ColorSwatch color={value} />} Color · {inherited ? 'Same as category' : label}
     </button>
     {open && <TaskDialog title="Choose a color" close={() => setOpen(false)}>
       <div className="task-form" id={id} role="listbox" aria-label="Color"
@@ -27,7 +27,8 @@ export function ColorSelect({ value, change }: { value: Color; change: (value: C
               : event.key === 'ArrowUp' ? (index - 1 + buttons.length) % buttons.length : -1
           if (next >= 0) { event.preventDefault(); buttons[next].focus() }
         }}>
-        {colors.map((color, index) => <button type="button" className="secondary" role="option" aria-selected={color === value}
+        {inherit && <button type="button" className="secondary" role="option" aria-selected={!!inherited} onClick={() => { inherit(); setOpen(false) }}>Same as category {inherited && <Check size={inlineIconSize} aria-hidden />}</button>}
+        {colors.map((color, index) => <button type="button" className="secondary" role="option" aria-selected={!inherited && color === value}
           data-first-field={color === value ? true : undefined} key={color} onClick={() => { change(color); setOpen(false) }}>
           <ColorSwatch color={color} /> {colorLabels[index]} {color === value && <Check size={inlineIconSize} aria-hidden />}
         </button>)}
